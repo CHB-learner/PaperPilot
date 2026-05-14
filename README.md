@@ -1,5 +1,7 @@
 # PaperPilot
 
+[English](README.md) | [中文](README.zh-CN.md)
+
 PaperPilot is a CLI research agent for AI-related literature review. It turns a natural-language research request into a verified paper corpus, code/PDF collection, evidence-grounded synthesis, and bilingual reports in Markdown, HTML, and PDF.
 
 It is designed as a file-system based research workflow, not a chatbot. Each run creates a self-contained run folder with state, logs, intermediate artifacts, evidence checks, and final reports.
@@ -30,8 +32,8 @@ python -m pip install paperpilot -i https://pypi.org/simple
 For local development:
 
 ```bash
-git clone https://github.com/<your-username>/paperpilot.git
-cd paperpilot
+git clone https://github.com/CHB-learner/PaperPilot.git
+cd PaperPilot
 python -m pip install -e .
 ```
 
@@ -141,10 +143,8 @@ flowchart LR
   CR --> OUT[ZH/EN Markdown<br/>ZH/EN HTML<br/>ZH/EN PDF]
 ```
 
-The repository also includes editable Excalidraw architecture diagrams:
+The repository also includes an HTML architecture overview:
 
-- `paperpilot_agent_flow.excalidraw`
-- `paperpilot_github_home_flow.excalidraw`
 - `paperpilot_agent_flow.html`
 
 ## Output Artifacts
@@ -245,13 +245,7 @@ python -m twine check dist/*
 Publish to PyPI:
 
 ```bash
-bash publish_pypi.sh --version 1.1.0
-```
-
-Dry run:
-
-```bash
-bash publish_pypi.sh --version 1.1.0 --dry-run
+python -m twine upload dist/*
 ```
 
 ## Open Source Notes
@@ -267,9 +261,9 @@ Suggested first push:
 
 ```bash
 git init
-git add README.md pyproject.toml literature_agent tests 使用文档.md paperpilot_agent_flow.html paperpilot_agent_flow.excalidraw paperpilot_github_home_flow.excalidraw publish_pypi.sh .gitignore
+git add README.md README.zh-CN.md pyproject.toml literature_agent tests paperpilot_agent_flow.html .gitignore LICENSE
 git commit -m "Initial open source release"
 git branch -M main
-git remote add origin https://github.com/<your-username>/paperpilot.git
+git remote add origin https://github.com/CHB-learner/PaperPilot.git
 git push -u origin main
 ```
