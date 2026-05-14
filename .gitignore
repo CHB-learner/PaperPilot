@@ -95,3 +95,10 @@ deepseek_api_key*
 
 # Twine / publishing local state
 .pypirc
+publish_pypi.sh
+
+# Local design/source notes not published to GitHub
+paperpilot_agent_flow.excalidraw
+paperpilot_github_home_flow.excalidraw
+使用文档.md
+来源.txt
