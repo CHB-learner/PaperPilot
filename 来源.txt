@@ -1,0 +1,51 @@
+https://papers.cool/
+https://data.rag.ac.cn/
+# 文献 / 论文 API
+
+https://data.rag.ac.cn/api/docs
+https://data.rag.ac.cn/pmc/
+
+https://export.arxiv.org/api/query
+https://api.semanticscholar.org/graph/v1/paper/search
+https://api.openalex.org/works
+https://api.crossref.org/works
+https://api.datacite.org/dois
+
+# PubMed / PMC / 生物医学
+
+https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
+https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi
+https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi
+https://www.ebi.ac.uk/europepmc/webservices/rest/search
+https://www.ebi.ac.uk/europepmc/webservices/rest/{ID}/fullTextXML
+
+# OA PDF / 全文获取
+
+https://api.unpaywall.org/v2/{DOI}?email=your_email@example.com
+https://api.core.ac.uk/v3/search/works
+https://api.core.ac.uk/v3/works/{ID}
+
+# 预印本
+
+https://api.biorxiv.org/details/biorxiv/
+https://api.medrxiv.org/details/medrxiv/
+
+# OpenReview / 会议论文
+
+https://api2.openreview.net
+https://api2.openreview.net/notes
+https://api2.openreview.net/forum
+
+# 其他可用
+
+https://api.crossref.org/works/{DOI}
+https://api.openalex.org/works/doi:{DOI}
+https://api.semanticscholar.org/graph/v1/paper/DOI:{DOI}
+
+
+https://export.arxiv.org/api/query
+https://api.semanticscholar.org/graph/v1/paper/search
+https://api.openalex.org/works
+https://www.ebi.ac.uk/europepmc/webservices/rest/search
+https://api.unpaywall.org/v2/{DOI}?email=your_email@example.com
+https://data.rag.ac.cn/api/docs

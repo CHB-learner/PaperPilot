@@ -1,0 +1,97 @@
+# macOS / editor
+.DS_Store
+.AppleDouble
+.LSOverride
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# PaperPilot run artifacts
+runs/
+pdfs/
+fulltext/
+*.log
+events.jsonl
+download_log.json
+paper_notes.json
+report.canonical.json
+report.zh.md
+report.en.md
+report.zh.html
+report.en.html
+report.zh.pdf
+report.en.pdf
+metadata.json
+corpus.json
+core_papers.json
+adjacent_papers.json
+excluded_papers.json
+ranked_papers.json
+verification.json
+quality_gate.json
+reflection.json
+evidence_ledger.json
+review_agent_findings.json
+literature_matrix.json
+synthesis.json
+state.json
+task.json
+manifest.json
+prompt_manifest.json
+registries.json
+user_corpus_log.json
+query_understanding.md
+plan.json
+protocol.json
+
+# Secrets and local LLM config
+api.json
+llmapi.txt
+llmapi.json
+openai_api_key*
+deepseek_api_key*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local notebooks / data dumps
+.ipynb_checkpoints/
+*.sqlite
+*.sqlite3
+*.db
+*.csv
+*.tsv
+*.xlsx
+*.parquet
+
+# Twine / publishing local state
+.pypirc

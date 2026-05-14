@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaperPilot v1.1 Agent 流程图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #5b6472;
+      --line: #d4dae3;
+      --panel: #ffffff;
+      --bg: #f5f7fb;
+      --tool: #1f6feb;
+      --llm: #7a3eb1;
+      --data: #0a7d74;
+      --gate: #b45309;
+      --quality: #0f766e;
+      --warn: #b42318;
+      --shadow: 0 12px 26px rgba(23, 32, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+
+    .page {
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 28px 20px 42px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 880px;
+    }
+
+    .version {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pill,
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      white-space: nowrap;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: 600px;
+    }
+
+    .chip {
+      gap: 7px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--tool);
+    }
+
+    .dot.llm { background: var(--llm); }
+    .dot.data { background: var(--data); }
+    .dot.gate { background: var(--gate); }
+    .dot.quality { background: var(--quality); }
+    .dot.warn { background: var(--warn); }
+
+    .flow-wrap {
+      margin-top: 24px;
+      overflow-x: auto;
+      padding: 6px 2px 20px;
+    }
+
+    .flow {
+      min-width: 1320px;
+      display: grid;
+      grid-template-columns: repeat(9, minmax(132px, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: 34px 1fr;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .stage-title {
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .node {
+      position: relative;
+      min-height: 214px;
+      padding: 13px 12px 12px;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--tool);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .node::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      width: 14px;
+      border-top: 2px solid var(--line);
+    }
+
+    .node::before {
+      content: "";
+      position: absolute;
+      top: calc(50% - 5px);
+      right: -17px;
+      width: 0;
+      height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 8px solid var(--line);
+    }
+
+    .stage:last-child .node::before,
+    .stage:last-child .node::after {
+      display: none;
+    }
+
+    .node.llm { border-top-color: var(--llm); }
+    .node.data { border-top-color: var(--data); }
+    .node.gate { border-top-color: var(--gate); }
+    .node.quality { border-top-color: var(--quality); }
+    .node.warn { border-top-color: var(--warn); }
+
+    .node h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .node p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .node ul {
+      margin: 9px 0 0;
+      padding-left: 17px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .node li + li {
+      margin-top: 3px;
+    }
+
+    code,
+    .file,
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .layers {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .code {
+      margin: 9px 0 0;
+      padding: 9px 10px;
+      border: 1px solid #d9dee8;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #1f2937;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .outputs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .file {
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #d9dee8;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #1f2937;
+      font-size: 11.5px;
+      overflow-wrap: anywhere;
+    }
+
+    .matrix {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .matrix h2 {
+      margin: 0;
+      padding: 15px 16px 10px;
+      font-size: 17px;
+    }
+
+    .agent-map {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .agent-map h2 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .agent-map > p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dataflow {
+      min-width: 1180px;
+      display: grid;
+      grid-template-columns: 170px 1fr 170px;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .flow-column {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .flow-card {
+      position: relative;
+      min-height: 94px;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--tool);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .flow-card.llm { border-top-color: var(--llm); }
+    .flow-card.data { border-top-color: var(--data); }
+    .flow-card.gate { border-top-color: var(--gate); }
+    .flow-card.quality { border-top-color: var(--quality); }
+    .flow-card.warn { border-top-color: var(--warn); }
+
+    .flow-card h3 {
+      margin: 0 0 5px;
+      font-size: 13px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .flow-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .flow-card ul {
+      margin: 6px 0 0;
+      padding-left: 16px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .flow-card.arrow-right::after {
+      content: "";
+      position: absolute;
+      right: -14px;
+      top: 44px;
+      width: 14px;
+      border-top: 2px solid var(--line);
+    }
+
+    .flow-card.arrow-right::before {
+      content: "";
+      position: absolute;
+      right: -18px;
+      top: 39px;
+      width: 0;
+      height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 8px solid var(--line);
+    }
+
+    .flow-stack-title {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .flow-band {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .dataflow-note {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .note-card {
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      header,
+      .layers {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        justify-content: flex-start;
+      }
+
+      .outputs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dataflow-note {
+        grid-template-columns: 1fr;
+      }
+
+      .page {
+        padding: 22px 14px 34px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>PaperPilot v1.1 Agent 流程图</h1>
+        <p class="subtitle">从自然语言调研需求到研究协议、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.1 增加 Prompt Registry、Tool/Capability Registry、事件流、用户本地语料、claim 级证据账本和复核 Agent 检查。</p>
+        <div class="version">
+          <span class="pill">v1.1 architecture</span>
+          <span class="pill">State-machine workflow</span>
+          <span class="pill">Canonical bilingual report</span>
+          <span class="pill">Citation-numbered reports</span>
+          <span class="pill">Prompt / Tool / Capability registry</span>
+        </div>
+      </div>
+      <div class="legend" aria-label="模块图例">
+        <span class="chip"><span class="dot llm"></span>LLM Agent</span>
+        <span class="chip"><span class="dot"></span>确定性工具</span>
+        <span class="chip"><span class="dot data"></span>语料 / 数据</span>
+        <span class="chip"><span class="dot gate"></span>配置 / 入口</span>
+        <span class="chip"><span class="dot quality"></span>质量门</span>
+        <span class="chip"><span class="dot warn"></span>人工关注</span>
+      </div>
+    </header>
+
+    <section class="flow-wrap" aria-label="PaperPilot v1.1 主流程">
+      <div class="flow">
+        <div class="stage">
+          <div class="stage-title">Intake</div>
+          <article class="node gate">
+            <h2>CLI / 交互入口</h2>
+            <p>用户输入 <strong>PaperPilot</strong> 或命令式 topic，系统创建唯一 run folder，并写入可观察事件流。</p>
+            <ul>
+              <li>显示 active model</li>
+              <li><code>/model</code> 管理模型</li>
+              <li><code>state.json</code> 记录阶段</li>
+              <li><code>events.jsonl</code> 记录事件流</li>
+              <li><code>PaperPilot inspect</code> 查看任务</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Config</div>
+          <article class="node gate">
+            <h2>LLM 配置门禁</h2>
+            <p>未检测到可用 LLM 时，先引导配置并测试连通性，通过后才进入系统。</p>
+            <ul>
+              <li>手动输入 API Key</li>
+              <li>导入本地 <code>api.json</code></li>
+              <li>缓存到 <code>~/.paperpilot/config.json</code></li>
+              <li>原文件删除后不影响使用</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Protocol</div>
+          <article class="node llm">
+            <h2>Prompted Protocol</h2>
+            <p>通过版本化 Prompt Registry 驱动需求解析、检索计划和研究协议生成。</p>
+            <ul>
+              <li><code>query_understanding.md</code></li>
+              <li><code>plan.json</code></li>
+              <li><code>protocol.json</code></li>
+              <li><code>prompt_manifest.json</code> 记录角色与版本</li>
+              <li>负面关键词约束偏题结果</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Search</div>
+          <article class="node">
+            <h2>Tool Registry Search</h2>
+            <p>并发调用多源论文 API；也可用 <code>--user-corpus</code> 先导入本地 PDF/BibTeX/RIS/Markdown 作为用户语料。</p>
+            <ul>
+              <li>arXiv</li>
+              <li>Semantic Scholar</li>
+              <li>OpenAlex / Crossref</li>
+              <li>OpenReview</li>
+              <li><code>registries.json</code></li>
+              <li><code>user_corpus_log.json</code></li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Corpus</div>
+          <article class="node data">
+            <h2>Normalize + Corpus</h2>
+            <p>标准化论文模型，增强去重，并统一代码资源字段。</p>
+            <ul>
+              <li>DOI / arXiv / OpenReview</li>
+              <li>标题相似度合并预印本和发表版</li>
+              <li><code>CodeArtifact</code> 置信度</li>
+              <li><code>corpus.json</code></li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Screening</div>
+          <article class="node llm">
+            <h2>Relevance Screening</h2>
+            <p>将候选论文分为核心、相关但非核心、排除，减少偏题污染。</p>
+            <ul>
+              <li><code>core_papers.json</code></li>
+              <li><code>adjacent_papers.json</code></li>
+              <li><code>excluded_papers.json</code></li>
+              <li><code>github_filter</code> 只影响最终视图</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Verify</div>
+          <article class="node quality">
+            <h2>Verification + PDF</h2>
+            <p>验证 DOI、URL、PDF 和代码链接状态，只下载明确开放 PDF。</p>
+            <ul>
+              <li><code>verification.json</code></li>
+              <li><code>download_log.json</code></li>
+              <li><code>fulltext/</code></li>
+              <li><code>paper_notes.json</code></li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Synthesis</div>
+          <article class="node llm">
+            <h2>Evidence Synthesis</h2>
+            <p>基于已筛选语料生成方法矩阵、主题综合、争议点和研究空白。</p>
+            <ul>
+              <li><code>literature_matrix.json</code></li>
+              <li><code>synthesis.json</code></li>
+              <li>缺失证据标记 <code>MATERIAL GAP</code></li>
+              <li>不凭空补全文结论</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stage">
+          <div class="stage-title">Report</div>
+          <article class="node quality">
+            <h2>Review + Report</h2>
+            <p>运行质量门、claim 级证据账本和复核 Agent，再由 canonical model 渲染中英文 Markdown、HTML 和 PDF。</p>
+            <ul>
+              <li><code>quality_gate.json</code></li>
+              <li><code>evidence_ledger.json</code></li>
+              <li><code>review_agent_findings.json</code></li>
+              <li><code>report.canonical.json</code> 保存 citation map</li>
+              <li><code>report.zh.md</code> / <code>report.en.md</code></li>
+              <li><code>report.zh.html</code> / <code>report.en.html</code></li>
+              <li><code>report.zh.pdf</code> / <code>report.en.pdf</code></li>
+              <li>参考文献附带论文链接和代码仓库链接</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="agent-map" aria-label="Agent 数据流向交互图">
+      <h2>Agent 数据流向与交互图</h2>
+      <p>这张图展示一次 PaperPilot run 里，用户输入、Prompt/Tool/Capability 注册表、各类 Agent、确定性工具、证据账本和报告渲染之间的真实数据流。</p>
+
+      <div class="dataflow">
+        <div class="flow-column">
+          <div class="flow-stack-title">Input</div>
+          <article class="flow-card gate arrow-right">
+            <h3>用户需求</h3>
+            <p>自然语言 topic、CLI 参数、模型配置、本地语料。</p>
+            <ul>
+              <li><code>keyword</code></li>
+              <li><code>--user-corpus</code></li>
+              <li><code>--github-filter</code></li>
+            </ul>
+          </article>
+          <article class="flow-card data arrow-right">
+            <h3>Run Context</h3>
+            <p>创建任务目录，写入状态、事件和注册表清单。</p>
+            <ul>
+              <li><code>task.json</code></li>
+              <li><code>state.json</code></li>
+              <li><code>events.jsonl</code></li>
+            </ul>
+          </article>
+        </div>
+
+        <div>
+          <div class="flow-stack-title">Agent + Tool Pipeline</div>
+          <div class="lane">
+            <article class="flow-card llm arrow-right">
+              <h3>QueryUnderstandingAgent</h3>
+              <p>理解关键词、歧义、范围和推荐方向。</p>
+              <ul>
+                <li>in: user topic</li>
+                <li>out: <code>query_understanding.md</code></li>
+              </ul>
+            </article>
+            <article class="flow-card llm arrow-right">
+              <h3>PlannerAgent</h3>
+              <p>生成英文检索式、子方向和来源策略。</p>
+              <ul>
+                <li>in: query understanding</li>
+                <li>out: <code>plan.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card llm arrow-right">
+              <h3>ResearchProtocolAgent</h3>
+              <p>定义研究问题、纳入/排除标准和负面关键词。</p>
+              <ul>
+                <li>in: plan</li>
+                <li>out: <code>protocol.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card data">
+              <h3>Prompt Registry</h3>
+              <p>所有 LLM Agent 通过版本化 prompt 和必需 JSON 字段运行。</p>
+              <ul>
+                <li><code>prompt_manifest.json</code></li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="flow-band">
+            <article class="flow-card arrow-right">
+              <h3>Search Tools</h3>
+              <p>在线来源与本地语料共同进入候选池。</p>
+              <ul>
+                <li>arXiv / Semantic Scholar</li>
+                <li>OpenAlex / Crossref / OpenReview</li>
+                <li><code>user_corpus_log.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card data arrow-right">
+              <h3>Corpus Builder</h3>
+              <p>标准化、去重、排序和代码链接解析。</p>
+              <ul>
+                <li><code>metadata.json</code></li>
+                <li><code>corpus.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card llm arrow-right">
+              <h3>RelevanceJudgeAgent</h3>
+              <p>把论文划分为 core、adjacent、exclude。</p>
+              <ul>
+                <li><code>core_papers.json</code></li>
+                <li><code>excluded_papers.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card quality arrow-right">
+              <h3>Verification Tools</h3>
+              <p>检查 DOI、URL、PDF、代码状态并提取全文。</p>
+              <ul>
+                <li><code>verification.json</code></li>
+                <li><code>fulltext/</code></li>
+              </ul>
+            </article>
+            <article class="flow-card data">
+              <h3>Tool / Capability Registry</h3>
+              <p>记录工具层和能力层边界，给后续插件化留接口。</p>
+              <ul>
+                <li><code>registries.json</code></li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="flow-band">
+            <article class="flow-card llm arrow-right">
+              <h3>SynthesisAgent</h3>
+              <p>生成综述正文、方法流派、逐篇总结和趋势。</p>
+              <ul>
+                <li><code>literature_matrix.json</code></li>
+                <li><code>synthesis.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card quality arrow-right">
+              <h3>Quality Gate</h3>
+              <p>检查论文数量、PDF/代码覆盖率、偏题率和来源覆盖。</p>
+              <ul>
+                <li><code>quality_gate.json</code></li>
+                <li><code>reflection.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card quality arrow-right">
+              <h3>Evidence Ledger</h3>
+              <p>把报告 claim 绑定到论文编号引用。</p>
+              <ul>
+                <li>claim -> <code>[1]</code>/<code>[2]</code></li>
+                <li><code>evidence_ledger.json</code></li>
+              </ul>
+            </article>
+            <article class="flow-card llm arrow-right">
+              <h3>Review Agents</h3>
+              <p>来源、相关性、引用合规和过度断言复核。</p>
+              <ul>
+                <li>SourceVerifier</li>
+                <li>CitationCompliance</li>
+                <li>DevilsAdvocate</li>
+              </ul>
+            </article>
+            <article class="flow-card data">
+              <h3>Canonical Report</h3>
+              <p>中英文、HTML、PDF 共用同一个规范化报告模型。</p>
+              <ul>
+                <li><code>report.canonical.json</code></li>
+                <li><code>citation_map</code></li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <div class="flow-column">
+          <div class="flow-stack-title">Output</div>
+          <article class="flow-card quality">
+            <h3>Report Renderer</h3>
+            <p>从 canonical 渲染中文、英文、HTML 和 PDF。</p>
+            <ul>
+              <li><code>report.zh.md/html/pdf</code></li>
+              <li><code>report.en.md/html/pdf</code></li>
+            </ul>
+          </article>
+          <article class="flow-card data">
+            <h3>Inspect / Resume</h3>
+            <p>用户可查看事件、质量门、证据账本和复核结果，或复用任务目录重跑。</p>
+            <ul>
+              <li><code>PaperPilot inspect</code></li>
+              <li><code>PaperPilot resume</code></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+
+      <div class="dataflow-note">
+        <div class="note-card">LLM Agent 只做理解、规划、筛选、综合和审稿；API 请求、下载、去重、排序和渲染由确定性工具完成。</div>
+        <div class="note-card">所有关键阶段同时写入 artifact 和 <code>events.jsonl</code>，所以失败后能定位卡在哪个阶段。</div>
+        <div class="note-card">报告中的论文编号来自同一份 <code>report.canonical.json</code>，避免中英文、HTML、PDF 引用错位。</div>
+      </div>
+    </section>
+
+    <section class="layers" aria-label="关键架构层">
+      <article class="panel">
+        <h2>v1.1 状态机与事件流</h2>
+        <p>PaperPilot 现在不是简单 8 步脚本，而是保存阶段状态的研究工作流。每个 run folder 都有状态、清单和可审计中间产物。</p>
+        <div class="code">Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis -> Review -> Report</div>
+        <ul>
+          <li><code>state.json</code> 记录每个阶段的完成情况。</li>
+          <li><code>events.jsonl</code> 记录 start、progress、stage、done 等事件。</li>
+          <li><code>manifest.json</code> 记录最终产物清单和模型信息。</li>
+          <li><code>PaperPilot inspect &lt;task-id&gt;</code> 可查看质量门、证据账本和复核结果。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>质量门与偏题控制</h2>
+        <p>报告质量不再只依赖排序分数，核心语料先经过纳入/排除标准和相关性筛选，然后生成综述级正文。</p>
+        <ul>
+          <li>gRNAde 这类预印本/发表版通过标题相似度合并。</li>
+          <li>AutoDock Vina、RNA-SeQC、ProLIF、RTM-align 等偏题工具进入 <code>exclude</code>。</li>
+          <li><code>quality_gate.json</code> 输出 <code>pass</code>、<code>retry</code> 或 <code>needs_user_attention</code>。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>统一引用编号</h2>
+        <p>报告生成阶段会以最终 <code>report.papers</code> 排序为唯一编号来源，把结构化论文位置都渲染成 <code>[1]</code>、<code>[2]</code> 这类引用。</p>
+        <div class="code">report.papers -> citation_map -> paper_summaries / method_taxonomy / tables / references</div>
+        <ul>
+          <li>逐篇总结、方法流派代表论文、核心论文表、证据矩阵、代码表和 PDF 表都带编号。</li>
+          <li>中英文 Markdown、HTML、PDF 共享同一个 <code>report.canonical.json</code>，编号和排序一致。</li>
+          <li>参考文献区按 <code>[n]</code> 列出论文，若找到仓库则附带 Repository 链接。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>Evidence Ledger + Review Agents</h2>
+        <p>报告不只输出正文，还会为关键综述 claim 建立证据账本，并由轻量复核 Agent 检查来源、相关性、引用一致性和过度断言风险。</p>
+        <div class="code">canonical report -> evidence_ledger.json -> review_agent_findings.json -> final report</div>
+        <ul>
+          <li><code>evidence_ledger.json</code> 把 claim 绑定到 <code>[1]</code>、<code>[2]</code> 等论文引用。</li>
+          <li><code>SourceVerifierAgent</code> 检查 DOI、URL、PDF、代码状态。</li>
+          <li><code>CitationComplianceAgent</code> 检查引用编号是否来自同一个 canonical paper list。</li>
+          <li><code>DevilsAdvocateAgent</code> 标记小语料、质量门未过、证据缺口等过度解读风险。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>Prompt / Tool / Capability Registry</h2>
+        <p>Prompt 不再只是散落在 Python 函数里的字符串，而是带角色、版本和必需 JSON 字段的注册表。工具和能力也会写入运行目录，方便后续插件化。</p>
+        <div class="code">prompt_manifest.json + registries.json + events.jsonl</div>
+        <ul>
+          <li>Prompt Registry 管理 QueryUnderstanding、Planner、Protocol、Screening、Synthesis、Reflection、Abstract。</li>
+          <li>ToolRegistry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、GitHub、PDF、fulltext、report renderer。</li>
+          <li>CapabilityRegistry 预留 literature_review、systematic_review、code_reproducibility_review 和 topic_monitoring。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>用户语料入口</h2>
+        <p>除了在线检索，用户可以把已有 PDF、BibTeX、RIS、Markdown 或文本目录交给 PaperPilot，系统会把它们并入候选语料并记录导入日志。</p>
+        <div class="code">--user-corpus ./papers --user-corpus references.bib</div>
+        <ul>
+          <li>本地 PDF 会以文件名作为最小标题进入语料，后续仍参与筛选和去重。</li>
+          <li>BibTeX / RIS 会尽量解析标题、作者、年份、DOI 和 URL。</li>
+          <li>无法解析的文件写入 <code>user_corpus_log.json</code>，不会静默丢弃。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="matrix" aria-label="输出文件">
+      <h2>Run Folder 输出</h2>
+      <div class="outputs">
+        <div class="file">task.json</div>
+        <div class="file">state.json</div>
+        <div class="file">events.jsonl</div>
+        <div class="file">manifest.json</div>
+        <div class="file">prompt_manifest.json</div>
+        <div class="file">registries.json</div>
+        <div class="file">query_understanding.md</div>
+        <div class="file">plan.json</div>
+        <div class="file">protocol.json</div>
+        <div class="file">metadata.json</div>
+        <div class="file">user_corpus_log.json</div>
+        <div class="file">corpus.json</div>
+        <div class="file">core_papers.json</div>
+        <div class="file">adjacent_papers.json</div>
+        <div class="file">excluded_papers.json</div>
+        <div class="file">ranked_papers.json</div>
+        <div class="file">verification.json</div>
+        <div class="file">quality_gate.json</div>
+        <div class="file">literature_matrix.json</div>
+        <div class="file">synthesis.json</div>
+        <div class="file">evidence_ledger.json<br>claim -> citation</div>
+        <div class="file">review_agent_findings.json<br>复核 Agent</div>
+        <div class="file">report.canonical.json<br>citation_map / [1][2]</div>
+        <div class="file">report.zh.md<br>编号引用 + 参考文献</div>
+        <div class="file">report.en.md<br>numbered citations</div>
+        <div class="file">report.zh.html<br>可点击论文/仓库链接</div>
+        <div class="file">report.en.html<br>clickable references</div>
+        <div class="file">download_log.json</div>
+        <div class="file">paper_notes.json</div>
+        <div class="file">fulltext/</div>
+        <div class="file">pdfs/</div>
+        <div class="file">report.zh.pdf / report.en.pdf</div>
+      </div>
+    </section>
+
+    <section class="matrix" aria-label="CLI 参数">
+      <h2>新增 CLI 能力</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>命令 / 参数</th>
+            <th>用途</th>
+            <th>默认行为</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--mode quick|apa|systematic</code></td>
+            <td>控制报告形态</td>
+            <td><code>apa</code></td>
+          </tr>
+          <tr>
+            <td><code>--interaction auto|gated</code></td>
+            <td>控制是否在关键歧义处停下确认</td>
+            <td><code>auto</code></td>
+          </tr>
+          <tr>
+            <td><code>--quality fast|balanced|strict</code></td>
+            <td>控制质量门严格度</td>
+            <td><code>balanced</code></td>
+          </tr>
+          <tr>
+            <td><code>--include-adjacent</code></td>
+            <td>把相关但非核心论文纳入矩阵/附录</td>
+            <td>关闭</td>
+          </tr>
+          <tr>
+            <td><code>--user-corpus &lt;path&gt;</code></td>
+            <td>导入本地 PDF、BibTeX、RIS、Markdown 或文本语料</td>
+            <td>可重复传入</td>
+          </tr>
+          <tr>
+            <td><code>PaperPilot inspect &lt;run&gt;</code></td>
+            <td>查看状态、事件流、质量门、证据账本和复核 Agent 结果</td>
+            <td>只读</td>
+          </tr>
+          <tr>
+            <td><code>PaperPilot resume &lt;run&gt;</code></td>
+            <td>读取 <code>task.json</code> 并重新运行任务</td>
+            <td>复用原目录</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
