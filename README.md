@@ -2,6 +2,15 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+[![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
+[![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=python)](https://pypi.org/project/paperpilot/)
+[![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/CHB-learner/PaperPilot?color=7c3aed&label=release)](https://github.com/CHB-learner/PaperPilot/releases)
+![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)
+![LLM](https://img.shields.io/badge/LLM-OpenAI--compatible-10b981)
+![Reports](https://img.shields.io/badge/reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)
+![Workflow](https://img.shields.io/badge/workflow-evidence--grounded-0891b2)
+
 PaperPilot is a CLI research agent for AI-related literature review. It turns a natural-language research request into a verified paper corpus, code/PDF collection, evidence-grounded synthesis, and bilingual reports in Markdown, HTML, and PDF.
 
 It is designed as a file-system based research workflow, not a chatbot. Each run creates a self-contained run folder with state, logs, intermediate artifacts, evidence checks, and final reports.

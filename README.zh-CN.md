@@ -2,6 +2,15 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+[![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
+[![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=python)](https://pypi.org/project/paperpilot/)
+[![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/CHB-learner/PaperPilot?color=7c3aed&label=release)](https://github.com/CHB-learner/PaperPilot/releases)
+![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)
+![LLM](https://img.shields.io/badge/LLM-OpenAI--compatible-10b981)
+![Reports](https://img.shields.io/badge/reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)
+![Workflow](https://img.shields.io/badge/workflow-evidence--grounded-0891b2)
+
 PaperPilot 是一个面向 AI 相关方向的命令行文献调研 Agent。你可以用自然语言输入研究需求，它会自动完成需求理解、检索计划、多源论文搜索、语料筛选、代码/PDF 解析、证据综合，并输出中文和英文两套 Markdown、HTML、PDF 报告。
 
 它不是一个简单聊天机器人，而是一个基于文件系统 run folder 的自动化研究工作流。每次运行都会生成独立任务文件夹，保存状态、事件日志、中间产物、质量检查和最终报告。
@@ -274,4 +283,3 @@ git branch -M main
 git remote add origin https://github.com/CHB-learner/PaperPilot.git
 git push -u origin main
 ```
-
