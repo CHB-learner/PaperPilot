@@ -62,6 +62,20 @@ class ProcessingTests(unittest.TestCase):
         self.assertEqual(len(filtered), 1)
         self.assertEqual(filtered[0].github_url, "https://github.com/example/repo")
 
+    def test_paper_model_normalizes_non_string_metadata(self):
+        paper = Paper(
+            title={"value": "RNA inverse folding"},
+            authors=[{"name": "Ada Lovelace"}],
+            venue={"display_name": "Nature Biotechnology"},
+            abstract=["RNA", "sequence design"],
+        )
+
+        ranked = workflow_module.rank_papers([paper], "RNA sequence design", 2021)
+
+        self.assertEqual(ranked[0].venue, "Nature Biotechnology")
+        self.assertEqual(ranked[0].authors, ["Ada Lovelace"])
+        self.assertGreaterEqual(ranked[0].rank_score, 0)
+
     def test_project_pdf_is_not_code_link(self):
         papers = [
             Paper(
