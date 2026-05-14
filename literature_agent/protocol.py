@@ -6,7 +6,19 @@ from .prompts import run_prompt_json
 from .query import QueryUnderstanding
 
 
-DEFAULT_SOURCES = ["arxiv", "semantic_scholar", "openalex", "crossref", "openreview"]
+DEFAULT_SOURCES = [
+    "arxiv",
+    "semantic_scholar",
+    "openalex",
+    "crossref",
+    "openreview",
+    "pubmed",
+    "europe_pmc",
+    "biorxiv",
+    "medrxiv",
+    "dblp",
+    "acl_anthology",
+]
 
 
 def build_protocol(
@@ -31,7 +43,7 @@ def build_protocol(
         inclusion_criteria=_as_list(payload.get("inclusion_criteria"), fallback.inclusion_criteria)[:10],
         exclusion_criteria=_as_list(payload.get("exclusion_criteria"), fallback.exclusion_criteria)[:10],
         negative_keywords=_as_list(payload.get("negative_keywords"), fallback.negative_keywords)[:20],
-        search_sources=_as_list(payload.get("search_sources"), fallback.search_sources)[:10] or DEFAULT_SOURCES,
+        search_sources=_as_list(payload.get("search_sources"), fallback.search_sources)[:20] or DEFAULT_SOURCES,
         since_year=plan.since_year,
         github_filter=github_filter,
         pdf_policy=fallback.pdf_policy,

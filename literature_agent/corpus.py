@@ -135,6 +135,7 @@ def _merge_paper(current: Paper, paper: Paper) -> None:
         current.year = paper.year
     if len(paper.authors) > len(current.authors):
         current.authors = paper.authors
+    current.raw.setdefault("identifiers", {}).update((paper.raw or {}).get("identifiers") or {})
 
 
 def classify_paper(paper: Paper, plan: SearchPlan, protocol: ResearchProtocol) -> InclusionDecision:

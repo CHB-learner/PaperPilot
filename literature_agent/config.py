@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .openai_client import OpenAIClient
+from .sources import SourceConfig, source_config_from_dict
 from .utils import ApiConfig
 
 
@@ -20,6 +21,7 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 class AppConfig:
     active: str | None = None
     profiles: dict[str, ApiConfig] = field(default_factory=dict)
+    sources: dict[str, SourceConfig] = field(default_factory=dict)
 
 
 def load_app_config(path: Path = CONFIG_PATH) -> AppConfig:
@@ -52,7 +54,13 @@ def load_app_config(path: Path = CONFIG_PATH) -> AppConfig:
     active = data.get("active") if isinstance(data.get("active"), str) else None
     if not active and profiles:
         active = next(iter(profiles))
-    return AppConfig(active=active, profiles=profiles)
+    sources: dict[str, SourceConfig] = {}
+    raw_sources = data.get("sources")
+    if isinstance(raw_sources, dict):
+        for name, raw in raw_sources.items():
+            if isinstance(raw, dict):
+                sources[str(name)] = source_config_from_dict(raw)
+    return AppConfig(active=active, profiles=profiles, sources=sources)
 
 
 def save_app_config(config: AppConfig, path: Path = CONFIG_PATH) -> None:
@@ -67,6 +75,7 @@ def save_app_config(config: AppConfig, path: Path = CONFIG_PATH) -> None:
             }
             for name, profile in config.profiles.items()
         },
+        "sources": {name: source.to_dict() for name, source in config.sources.items()},
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     try:

@@ -15,34 +15,52 @@ PROJECT_RE = re.compile(r"https?://[^\s)\]}>\"']*(?:project|code|demo|github)[^\
 
 def deduplicate(papers: list[Paper]) -> list[Paper]:
     merged: dict[str, Paper] = {}
+    key_index: dict[str, str] = {}
     for paper in papers:
-        key = dedup_key(paper)
-        if key not in merged:
+        keys = dedup_keys(paper)
+        match_key = next((key_index[key] for key in keys if key in key_index), None)
+        if not match_key:
+            key = keys[0]
             paper.sources = sorted(set(paper.sources or [paper.source]))
             merged[key] = paper
+            for alias in keys:
+                key_index[alias] = key
             continue
-        current = merged[key]
+        current = merged[match_key]
         current.sources = sorted(set(current.sources + paper.sources + [paper.source]))
         for field in ("abstract", "doi", "arxiv_id", "openreview_id", "url", "pdf_url", "venue"):
             if not getattr(current, field) and getattr(paper, field):
                 setattr(current, field, getattr(paper, field))
+        current.raw.setdefault("identifiers", {}).update((paper.raw or {}).get("identifiers") or {})
         if paper.citation_count and (not current.citation_count or paper.citation_count > current.citation_count):
             current.citation_count = paper.citation_count
         if paper.year and (not current.year or paper.year > current.year):
             current.year = paper.year
         if len(paper.authors) > len(current.authors):
             current.authors = paper.authors
+        for alias in keys:
+            key_index[alias] = match_key
     return list(merged.values())
 
 
 def dedup_key(paper: Paper) -> str:
+    return dedup_keys(paper)[0]
+
+
+def dedup_keys(paper: Paper) -> list[str]:
+    keys: list[str] = []
     if paper.doi:
-        return "doi:" + paper.doi.lower()
+        keys.append("doi:" + paper.doi.lower())
     if paper.arxiv_id:
-        return "arxiv:" + paper.arxiv_id.lower()
+        keys.append("arxiv:" + paper.arxiv_id.lower())
+    identifiers = (paper.raw or {}).get("identifiers") or {}
+    for key in ["pmid", "pmcid", "dblp_key"]:
+        if identifiers.get(key):
+            keys.append(f"{key}:{str(identifiers[key]).lower()}")
     if paper.openreview_id:
-        return "openreview:" + paper.openreview_id
-    return "title:" + normalize_title(paper.title)
+        keys.append("openreview:" + paper.openreview_id)
+    keys.append("title:" + normalize_title(paper.title))
+    return list(dict.fromkeys(keys))
 
 
 def resolve_code_links(papers: list[Paper]) -> list[Paper]:
@@ -134,8 +152,9 @@ def rank_papers(papers: list[Paper], keyword: str, since_year: int | None) -> li
         venue_bonus = 0.15 if paper.venue and any(v in paper.venue.lower() for v in ["neurips", "iclr", "icml", "acl", "cvpr", "emnlp", "openreview", "arxiv"]) else 0
         pdf_bonus = 0.1 if paper.pdf_url else 0
         code_bonus = 0.15 if paper.has_code else 0
+        source_diversity_bonus = min(0.12, 0.03 * max(0, len(set(paper.sources or [paper.source])) - 1))
         paper.relevance_score = round(relevance, 4)
-        paper.rank_score = round(relevance * 2 + recency + citations + venue_bonus + pdf_bonus + code_bonus, 4)
+        paper.rank_score = round(relevance * 2 + recency + citations + venue_bonus + pdf_bonus + code_bonus + source_diversity_bonus, 4)
     return sorted(papers, key=lambda p: p.rank_score, reverse=True)
 
 

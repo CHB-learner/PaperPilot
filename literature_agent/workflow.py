@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .config import load_app_config
 from .corpus import corpus_items_from_papers, enhanced_deduplicate, split_corpus
 from .events import EventLogger, read_events
 from .evidence import build_evidence_ledger
@@ -20,7 +21,8 @@ from .reflection import reflect
 from .registries import registry_manifest
 from .report import build_canonical_report, render_html_reports, render_reports
 from .review_agents import run_review_agents
-from .searchers import search_all
+from .searchers import search_all as _legacy_search_all
+from .searchers import search_all_with_diagnostics
 from .synthesis import build_literature_matrix, build_synthesis
 from .user_corpus import load_user_corpus
 from .utils import create_task_dir, write_json
@@ -40,14 +42,18 @@ STAGES = [
 ]
 
 
+search_all = _legacy_search_all
+
+
 def run_v1_workflow(args: argparse.Namespace, client) -> int:
     output_dir, task_id = prepare_output_dir(args)
     events = EventLogger(output_dir)
+    app_config = load_app_config()
     state = init_state(task_id, args, output_dir, client)
     write_state(output_dir, state)
     write_json(output_dir / "task.json", task_payload(task_id, args, output_dir))
     write_json(output_dir / "prompt_manifest.json", prompt_manifest())
-    write_json(output_dir / "registries.json", registry_manifest())
+    write_json(output_dir / "registries.json", registry_manifest(app_config.sources))
     events.emit("start", "intake", "Run created", task_id=task_id, model=getattr(client, "model", None))
     print(f"Task ID: {task_id}", flush=True)
     print(f"Output directory: {output_dir.resolve()}", flush=True)
@@ -79,9 +85,29 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     if user_papers:
         events.emit("progress", "search", "Loaded user corpus", count=len(user_papers))
     per_query_limit = candidate_limit(args.max_papers, len(plan.search_queries), args.github_filter)
-    raw_papers = user_papers + search_all(plan, per_query_limit=per_query_limit)
+    if search_all is not _legacy_search_all:
+        searched_papers = search_all(plan, per_query_limit=per_query_limit)
+        source_diagnostics = {"enabled_sources": ["test"], "total_returned": len(searched_papers), "sources": {}}
+    else:
+        searched_papers, source_diagnostics = search_all_with_diagnostics(
+            plan,
+            per_query_limit=per_query_limit,
+            source_mode=getattr(args, "sources", "auto"),
+            source_configs=app_config.sources,
+            enable_sources=getattr(args, "enable_source", None) or [],
+            disable_sources=getattr(args, "disable_source", None) or [],
+        )
+    raw_papers = user_papers + searched_papers
+    write_json(output_dir / "source_diagnostics.json", source_diagnostics)
     write_json(output_dir / "metadata.json", [paper.to_dict() for paper in raw_papers])
-    mark_stage(output_dir, state, "search", "completed", {"raw_count": len(raw_papers), "user_corpus": len(user_papers)}, events=events)
+    mark_stage(
+        output_dir,
+        state,
+        "search",
+        "completed",
+        {"raw_count": len(raw_papers), "user_corpus": len(user_papers), "sources": source_diagnostics.get("enabled_sources", [])},
+        events=events,
+    )
 
     mark_stage(output_dir, state, "corpus", "running", events=events)
     print("[4/9] Normalizing, deduplicating, and resolving code links", flush=True)
@@ -187,6 +213,7 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         reflection,
         None,
         None,
+        source_diagnostics,
         mode=args.mode,
         include_adjacent=args.include_adjacent,
         client=client,
@@ -237,6 +264,9 @@ def task_payload(task_id: str, args: argparse.Namespace, output_dir: Path) -> di
         "quality": getattr(args, "quality", "balanced"),
         "include_adjacent": getattr(args, "include_adjacent", False),
         "user_corpus": getattr(args, "user_corpus", None) or [],
+        "sources": getattr(args, "sources", "auto"),
+        "enable_source": getattr(args, "enable_source", None) or [],
+        "disable_source": getattr(args, "disable_source", None) or [],
     }
 
 
@@ -280,7 +310,7 @@ def write_manifest(output_dir: Path, state: dict[str, Any], client) -> None:
     manifest = {
         "task_id": state["task_id"],
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "paperpilot_version": "1.1.0",
+        "paperpilot_version": "1.2.0",
         "model": getattr(client, "model", None),
         "files": files,
     }
@@ -306,7 +336,7 @@ def inspect_run(path_or_id: str) -> int:
         print(f"Run not found: {path_or_id}")
         return 1
     print(f"Run: {run_dir.resolve()}")
-    for filename in ["state.json", "quality_gate.json", "review_agent_findings.json", "evidence_ledger.json", "reflection.json", "manifest.json"]:
+    for filename in ["state.json", "source_diagnostics.json", "quality_gate.json", "review_agent_findings.json", "evidence_ledger.json", "reflection.json", "manifest.json"]:
         path = run_dir / filename
         if not path.exists():
             continue
@@ -322,6 +352,10 @@ def inspect_run(path_or_id: str) -> int:
             print(f"verdict: {data.get('verdict')}")
             print(f"issues: {', '.join(data.get('issues') or []) or 'none'}")
             print(f"metrics: {json.dumps(data.get('metrics') or {}, ensure_ascii=False)[:1200]}")
+        elif filename == "source_diagnostics.json":
+            print(f"enabled sources: {', '.join(data.get('enabled_sources') or []) or 'none'}")
+            for source, info in (data.get("sources") or {}).items():
+                print(f"{source}: {info.get('status')} returned={info.get('returned')} errors={len(info.get('errors') or [])}")
         elif filename == "review_agent_findings.json":
             print(f"verdict: {data.get('verdict')}")
             print(f"blocking issues: {', '.join(data.get('blocking_issues') or []) or 'none'}")

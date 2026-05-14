@@ -22,7 +22,7 @@ PaperPilot 是一个面向 AI 相关方向的命令行文献调研 Agent。你�
 ## 功能亮点
 
 - 支持自然语言输入研究需求，由 LLM 辅助理解关键词和研究范围。
-- 多源论文检索：arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview。
+- 分层 Source Registry：默认覆盖 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology，并支持需要 API key 的扩展来源。
 - 支持 `--user-corpus` 导入本地 PDF、BibTeX、RIS、Markdown、文本文件作为用户语料。
 - 自动生成研究协议，包括研究问题、纳入/排除标准、时间范围和负面关键词。
 - 统一论文模型，支持 DOI、arXiv、标题相似度等多级去重。
@@ -71,6 +71,16 @@ PaperPilot config use deepseek
 PaperPilot config show
 ```
 
+配置可选来源 API Key：
+
+```bash
+PaperPilot sources list
+PaperPilot sources config core
+PaperPilot sources config lens
+PaperPilot sources enable core
+PaperPilot sources test core
+```
+
 配置会缓存到：
 
 ```text
@@ -107,6 +117,7 @@ PaperPilot "RNA inverse folding sequence design" \
   --max-papers 50 \
   --since-year 2021 \
   --github-filter required \
+  --sources auto \
   --mode apa \
   --quality balanced
 ```
@@ -119,6 +130,8 @@ PaperPilot "RNA inverse folding sequence design" \
   --user-corpus ./papers \
   --user-corpus references.bib
 ```
+
+默认免 key 来源包括 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP 和 ACL Anthology。可选 API-key 来源包括 CORE、Lens.org、IEEE Xplore、Springer Nature、Elsevier/Scopus 和 Dimensions。
 
 跳过 PDF 下载：
 
@@ -148,7 +161,7 @@ flowchart LR
   P --> QA[Query Understanding Agent]
   QA --> PL[Planner Agent]
   PL --> RP[Research Protocol Agent]
-  RP --> ST[Search Tools<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview]
+  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL]
   U --> LC[Local Corpus Import]
   LC --> CB[Corpus Builder]
   ST --> CB
@@ -179,6 +192,7 @@ flowchart LR
 - `manifest.json`：产物清单。
 - `prompt_manifest.json`：Prompt 角色、版本和 JSON 输出要求。
 - `registries.json`：内置 ToolRegistry 和 CapabilityRegistry。
+- `source_diagnostics.json`：启用来源、返回数量和来源级错误。
 
 检索和语料文件：
 
@@ -243,6 +257,9 @@ PaperPilot "retrieval augmented generation" --auto-confirm --github-filter requi
 --interaction auto|gated
 --quality fast|balanced|strict
 --include-adjacent               在矩阵/附录中包含 adjacent papers
+--sources auto|all|core|biomed|cs|configured
+--enable-source SOURCE           额外启用某个来源，可重复传入
+--disable-source SOURCE          禁用某个来源，可重复传入
 ```
 
 ## 开发

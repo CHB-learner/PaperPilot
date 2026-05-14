@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .sources import SourceConfig, source_manifest
+
 
 @dataclass(frozen=True)
 class ToolManifest:
@@ -73,10 +75,11 @@ CAPABILITIES = [
 ]
 
 
-def registry_manifest() -> dict[str, Any]:
+def registry_manifest(source_configs: dict[str, SourceConfig] | None = None) -> dict[str, Any]:
     return {
-        "tool_registry_version": "1.1.0",
-        "capability_registry_version": "1.1.0",
+        "tool_registry_version": "1.2.0",
+        "capability_registry_version": "1.2.0",
         "tools": [asdict(tool) for tool in TOOLS],
+        "sources": source_manifest(source_configs),
         "capabilities": [asdict(capability) for capability in CAPABILITIES],
     }

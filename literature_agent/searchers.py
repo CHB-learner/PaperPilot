@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import html
 import re
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -8,23 +9,83 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable
 
 from .models import Paper, SearchPlan
-from .utils import compact_text, encode_query, rate_limit_pause, request_json, request_text, safe_fetch
+from .sources import SOURCE_SPECS, SourceConfig, configured_api_key, resolve_enabled_sources
+from .utils import compact_text, encode_query, post_json, rate_limit_pause, request_json, request_text, safe_fetch
 
 
-def search_all(plan: SearchPlan, per_query_limit: int = 10) -> list[Paper]:
-    papers: list[Paper] = []
-    tools = [search_arxiv, search_semantic_scholar, search_openalex, search_crossref, search_openreview]
-    futures = []
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        for query in plan.search_queries:
-            for tool in tools:
-                futures.append(executor.submit(tool, query, per_query_limit, plan.since_year))
-        for future in as_completed(futures):
-            papers.extend(safe_fetch(future.result, []))
+def search_all(
+    plan: SearchPlan,
+    per_query_limit: int = 10,
+    *,
+    source_mode: str = "auto",
+    source_configs: dict[str, SourceConfig] | None = None,
+    enable_sources: list[str] | None = None,
+    disable_sources: list[str] | None = None,
+) -> list[Paper]:
+    papers, _ = search_all_with_diagnostics(
+        plan,
+        per_query_limit=per_query_limit,
+        source_mode=source_mode,
+        source_configs=source_configs,
+        enable_sources=enable_sources,
+        disable_sources=disable_sources,
+    )
     return papers
 
 
-def search_arxiv(query: str, limit: int, since_year: int | None) -> list[Paper]:
+def search_all_with_diagnostics(
+    plan: SearchPlan,
+    per_query_limit: int = 10,
+    *,
+    source_mode: str = "auto",
+    source_configs: dict[str, SourceConfig] | None = None,
+    enable_sources: list[str] | None = None,
+    disable_sources: list[str] | None = None,
+) -> tuple[list[Paper], dict]:
+    papers: list[Paper] = []
+    source_configs = source_configs or {}
+    source_names = resolve_enabled_sources(source_mode, source_configs, enable_sources, disable_sources)
+    diagnostics = _init_diagnostics(source_names, source_configs, plan.search_queries)
+    futures = {}
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        for query in plan.search_queries:
+            for source in source_names:
+                cfg = source_configs.get(source)
+                diagnostics["sources"][source]["queries"] += 1
+                future = executor.submit(search_one_source, source, query, per_query_limit, plan.since_year, cfg)
+                futures[future] = source
+        for future in as_completed(futures):
+            source = futures[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                diagnostics["sources"][source]["status"] = "error"
+                diagnostics["sources"][source]["errors"].append(f"{type(exc).__name__}: {exc}")
+                continue
+            diagnostics["sources"][source]["returned"] += len(result)
+            diagnostics["sources"][source]["status"] = "ok"
+            papers.extend(result)
+    diagnostics["total_returned"] = len(papers)
+    return papers, diagnostics
+
+
+def search_one_source(
+    source: str,
+    query: str,
+    limit: int,
+    since_year: int | None,
+    source_config: SourceConfig | None = None,
+) -> list[Paper]:
+    searcher = SEARCHERS.get(source)
+    if not searcher:
+        return []
+    spec = SOURCE_SPECS[source]
+    if spec.requires_key and not configured_api_key(source, source_config):
+        return []
+    return searcher(query, limit, since_year, source_config)
+
+
+def search_arxiv(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
     search_query = f'all:"{query}"'
     if since_year:
         search_query += f" AND submittedDate:[{since_year}01010000 TO 999912312359]"
@@ -73,7 +134,7 @@ def search_arxiv(query: str, limit: int, since_year: int | None) -> list[Paper]:
     return papers
 
 
-def search_semantic_scholar(query: str, limit: int, since_year: int | None) -> list[Paper]:
+def search_semantic_scholar(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
     fields = "title,authors,year,abstract,venue,citationCount,externalIds,url,openAccessPdf"
     url = "https://api.semanticscholar.org/graph/v1/paper/search?" + encode_query(
         {"query": query, "limit": limit, "fields": fields, "year": f"{since_year}-" if since_year else None}
@@ -103,7 +164,7 @@ def search_semantic_scholar(query: str, limit: int, since_year: int | None) -> l
     return [p for p in papers if p.title]
 
 
-def search_openalex(query: str, limit: int, since_year: int | None) -> list[Paper]:
+def search_openalex(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
     filters = []
     if since_year:
         filters.append(f"from_publication_date:{since_year}-01-01")
@@ -141,7 +202,7 @@ def search_openalex(query: str, limit: int, since_year: int | None) -> list[Pape
     return [p for p in papers if p.title]
 
 
-def search_crossref(query: str, limit: int, since_year: int | None) -> list[Paper]:
+def search_crossref(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
     filters = f"from-pub-date:{since_year}" if since_year else None
     url = "https://api.crossref.org/works?" + encode_query({"query": query, "rows": limit, "filter": filters})
     data = safe_fetch(lambda: request_json(url, timeout=12), {})
@@ -173,7 +234,7 @@ def search_crossref(query: str, limit: int, since_year: int | None) -> list[Pape
     return [p for p in papers if p.title]
 
 
-def search_openreview(query: str, limit: int, since_year: int | None) -> list[Paper]:
+def search_openreview(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
     url = "https://api2.openreview.net/notes/search?" + encode_query({"term": query, "limit": limit})
     data = safe_fetch(lambda: request_json(url, timeout=12), {})
     notes = data.get("notes", []) if isinstance(data, dict) else []
@@ -209,6 +270,350 @@ def search_openreview(query: str, limit: int, since_year: int | None) -> list[Pa
     return [p for p in papers if p.title]
 
 
+def search_pubmed(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    term = query
+    if since_year:
+        term = f"({query}) AND {since_year}:3000[pdat]"
+    search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?" + encode_query(
+        {"db": "pubmed", "term": term, "retmode": "json", "retmax": limit, "sort": "relevance"}
+    )
+    data = safe_fetch(lambda: request_json(search_url, timeout=12), {})
+    ids = ((data.get("esearchresult") or {}).get("idlist") or []) if isinstance(data, dict) else []
+    if not ids:
+        return []
+    fetch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?" + encode_query(
+        {"db": "pubmed", "id": ",".join(ids), "retmode": "xml"}
+    )
+    text = safe_fetch(lambda: request_text(fetch_url, timeout=12), "")
+    if not text:
+        return []
+    root = ET.fromstring(text)
+    papers: list[Paper] = []
+    for article in root.findall(".//PubmedArticle"):
+        citation = article.find(".//MedlineCitation")
+        pmid = _element_text(citation, "PMID") if citation is not None else None
+        article_node = article.find(".//Article")
+        title = compact_text(_element_text(article_node, "ArticleTitle"))
+        abstract = compact_text(" ".join(node.text or "" for node in article.findall(".//AbstractText"))) or None
+        authors = []
+        for author in article.findall(".//Author"):
+            name = " ".join(part for part in [_element_text(author, "ForeName"), _element_text(author, "LastName")] if part)
+            if name:
+                authors.append(name)
+        year = _pubmed_year(article)
+        journal = _element_text(article, ".//Journal/Title") or _element_text(article, ".//ISOAbbreviation")
+        doi = None
+        pmcid = None
+        for aid in article.findall(".//ArticleId"):
+            if aid.attrib.get("IdType") == "doi":
+                doi = aid.text
+            if aid.attrib.get("IdType") == "pmc":
+                pmcid = aid.text
+        url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None
+        papers.append(
+            Paper(
+                title=title,
+                authors=authors,
+                year=year,
+                venue=journal,
+                abstract=abstract,
+                doi=doi,
+                url=url,
+                source="pubmed",
+                sources=["pubmed"],
+                raw={"query": query, "identifiers": {"pmid": pmid, "pmcid": pmcid}},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_europe_pmc(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    europe_query = query
+    if since_year:
+        europe_query = f'({query}) FIRST_PDATE:[{since_year}-01-01 TO 3000-12-31]'
+    url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search?" + encode_query(
+        {"query": europe_query, "format": "json", "pageSize": limit, "resultType": "core"}
+    )
+    data = safe_fetch(lambda: request_json(url, timeout=12), {})
+    results = (((data.get("resultList") or {}).get("result")) or []) if isinstance(data, dict) else []
+    papers: list[Paper] = []
+    for item in results:
+        authors = [a.strip() for a in (item.get("authorString") or "").rstrip(".").split(",") if a.strip()]
+        pmid = item.get("pmid")
+        pmcid = item.get("pmcid")
+        pdf_url = item.get("fullTextUrlList", {}).get("fullTextUrl", [{}])[0].get("url") if isinstance(item.get("fullTextUrlList"), dict) else None
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=authors,
+                year=_safe_int(str(item.get("pubYear") or "")),
+                venue=item.get("journalTitle") or item.get("bookOrReportDetails"),
+                abstract=compact_text(item.get("abstractText")),
+                doi=item.get("doi"),
+                url=item.get("doiUrl") or (f"https://europepmc.org/article/MED/{pmid}" if pmid else None),
+                pdf_url=pdf_url,
+                citation_count=_safe_int(item.get("citedByCount")),
+                source="europe_pmc",
+                sources=["europe_pmc"],
+                raw={"query": query, "identifiers": {"pmid": pmid, "pmcid": pmcid}},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_biorxiv(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    return _search_rxiv("biorxiv", query, limit, since_year)
+
+
+def search_medrxiv(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    return _search_rxiv("medrxiv", query, limit, since_year)
+
+
+def search_dblp(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    url = "https://dblp.org/search/publ/api?" + encode_query({"q": query, "format": "json", "h": limit})
+    data = safe_fetch(lambda: request_json(url, timeout=12), {})
+    hits = (((data.get("result") or {}).get("hits") or {}).get("hit") or []) if isinstance(data, dict) else []
+    papers: list[Paper] = []
+    for hit in hits:
+        info = hit.get("info") or {}
+        authors = _dblp_authors(info.get("authors"))
+        year = _safe_int(info.get("year"))
+        if since_year and year and year < since_year:
+            continue
+        papers.append(
+            Paper(
+                title=compact_text(info.get("title")),
+                authors=authors,
+                year=year,
+                venue=info.get("venue"),
+                doi=info.get("doi"),
+                url=info.get("url"),
+                source="dblp",
+                sources=["dblp"],
+                raw={"query": query, "identifiers": {"dblp_key": info.get("key")}},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_acl_anthology(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    url = "https://aclanthology.org/search/?" + encode_query({"q": query})
+    text = safe_fetch(lambda: request_text(url, timeout=12), "")
+    papers: list[Paper] = []
+    seen: set[str] = set()
+    for match in re.finditer(r'href="(/(?:\d{4}\.)?[A-Z]\d{2,4}-[^\"]+/?)"[^>]*>(.*?)</a>', text, re.I | re.S):
+        path, raw_title = match.groups()
+        title = compact_text(re.sub("<[^>]+>", " ", html.unescape(raw_title)))
+        if not title or title in seen:
+            continue
+        seen.add(title)
+        year_match = re.search(r"/(\d{4})\.", path)
+        year = _safe_int(year_match.group(1)) if year_match else None
+        if since_year and year and year < since_year:
+            continue
+        papers.append(
+            Paper(
+                title=title,
+                year=year,
+                venue="ACL Anthology",
+                url=f"https://aclanthology.org{path}",
+                pdf_url=f"https://aclanthology.org{path.rstrip('/')}.pdf",
+                source="acl_anthology",
+                sources=["acl_anthology"],
+                raw={"query": query},
+            )
+        )
+        if len(papers) >= limit:
+            break
+    return papers
+
+
+def search_core(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("core", source_config)
+    if not api_key:
+        return []
+    url = (source_config.base_url if source_config and source_config.base_url else "https://api.core.ac.uk/v3/search/works")
+    url += "?" + encode_query({"q": query, "limit": limit})
+    data = safe_fetch(lambda: request_json(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=12), {})
+    results = data.get("results", []) if isinstance(data, dict) else []
+    papers: list[Paper] = []
+    for item in results:
+        year = _safe_int(item.get("yearPublished") or item.get("year"))
+        if since_year and year and year < since_year:
+            continue
+        authors = [a.get("name") for a in item.get("authors", []) if isinstance(a, dict) and a.get("name")]
+        links = item.get("links") or []
+        download_url = item.get("downloadUrl") or (links[0].get("url") if links and isinstance(links[0], dict) else None)
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=authors,
+                year=year,
+                venue=item.get("publisher") or item.get("journals"),
+                abstract=compact_text(item.get("abstract")),
+                doi=item.get("doi"),
+                url=item.get("sourceFulltextUrls", [None])[0] if isinstance(item.get("sourceFulltextUrls"), list) else item.get("url"),
+                pdf_url=download_url,
+                source="core",
+                sources=["core"],
+                raw={"query": query},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_lens(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("lens", source_config)
+    if not api_key:
+        return []
+    payload = {
+        "query": {"bool": {"must": [{"query_string": {"query": query}}]}},
+        "size": limit,
+    }
+    data = safe_fetch(lambda: post_json("https://api.lens.org/scholarly/search", payload, headers={"Authorization": f"Bearer {api_key}"}, timeout=20), {})
+    results = data.get("data", []) if isinstance(data, dict) else []
+    papers: list[Paper] = []
+    for item in results:
+        year = _safe_int(item.get("year_published"))
+        if since_year and year and year < since_year:
+            continue
+        authors = [a.get("display_name") for a in item.get("authors", []) if isinstance(a, dict) and a.get("display_name")]
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=authors,
+                year=year,
+                venue=(item.get("source") or {}).get("title") if isinstance(item.get("source"), dict) else None,
+                abstract=compact_text(item.get("abstract")),
+                doi=(item.get("external_ids") or {}).get("doi") if isinstance(item.get("external_ids"), dict) else None,
+                url=item.get("lens_url"),
+                citation_count=_safe_int(item.get("scholarly_citations_count")),
+                source="lens",
+                sources=["lens"],
+                raw={"query": query},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_ieee(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("ieee", source_config)
+    if not api_key:
+        return []
+    url = "https://ieeexploreapi.ieee.org/api/v1/search/articles?" + encode_query(
+        {"apikey": api_key, "format": "json", "querytext": query, "max_records": limit, "start_record": 1}
+    )
+    data = safe_fetch(lambda: request_json(url, timeout=12), {})
+    papers = []
+    for item in data.get("articles", []) if isinstance(data, dict) else []:
+        year = _safe_int(item.get("publication_year"))
+        if since_year and year and year < since_year:
+            continue
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=[a.get("full_name") for a in item.get("authors", {}).get("authors", []) if a.get("full_name")] if isinstance(item.get("authors"), dict) else [],
+                year=year,
+                venue=item.get("publication_title"),
+                abstract=compact_text(item.get("abstract")),
+                doi=item.get("doi"),
+                url=item.get("html_url"),
+                pdf_url=item.get("pdf_url"),
+                citation_count=_safe_int(item.get("citing_paper_count")),
+                source="ieee",
+                sources=["ieee"],
+                raw={"query": query},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_springer(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("springer", source_config)
+    if not api_key:
+        return []
+    url = "https://api.springernature.com/meta/v2/json?" + encode_query({"q": query, "p": limit, "api_key": api_key})
+    data = safe_fetch(lambda: request_json(url, timeout=12), {})
+    papers = []
+    for item in data.get("records", []) if isinstance(data, dict) else []:
+        year = _safe_int(str(item.get("publicationDate", ""))[:4])
+        if since_year and year and year < since_year:
+            continue
+        links = item.get("url") or []
+        paper_url = links[0].get("value") if links and isinstance(links[0], dict) else None
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=[a.get("creator") for a in item.get("creators", []) if isinstance(a, dict) and a.get("creator")],
+                year=year,
+                venue=item.get("publicationName"),
+                abstract=compact_text(item.get("abstract")),
+                doi=item.get("doi"),
+                url=paper_url,
+                source="springer",
+                sources=["springer"],
+                raw={"query": query},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_elsevier(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("elsevier", source_config)
+    if not api_key:
+        return []
+    query_text = f"TITLE-ABS-KEY({query})"
+    if since_year:
+        query_text += f" AND PUBYEAR > {since_year - 1}"
+    url = "https://api.elsevier.com/content/search/scopus?" + encode_query({"query": query_text, "count": limit})
+    data = safe_fetch(lambda: request_json(url, headers={"X-ELS-APIKey": api_key}, timeout=12), {})
+    entries = ((data.get("search-results") or {}).get("entry") or []) if isinstance(data, dict) else []
+    papers = []
+    for item in entries:
+        papers.append(
+            Paper(
+                title=compact_text(item.get("dc:title")),
+                authors=[item.get("dc:creator")] if item.get("dc:creator") else [],
+                year=_safe_int(str(item.get("prism:coverDate", ""))[:4]),
+                venue=item.get("prism:publicationName"),
+                doi=item.get("prism:doi"),
+                url=item.get("prism:url") or item.get("link", [{}])[0].get("@href") if isinstance(item.get("link"), list) else None,
+                citation_count=_safe_int(item.get("citedby-count")),
+                source="elsevier",
+                sources=["elsevier"],
+                raw={"query": query},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def search_dimensions(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("dimensions", source_config)
+    if not api_key:
+        return []
+    year_filter = f" and year >= {since_year}" if since_year else ""
+    payload = {"query": f'search publications for "\\"{query}\\""{year_filter} return publications[title+year+doi+abstract+authors+journal+times_cited+linkout] limit {limit}'}
+    data = safe_fetch(lambda: post_json("https://app.dimensions.ai/api/dsl.json", payload, headers={"Authorization": f"Bearer {api_key}"}, timeout=20), {})
+    papers = []
+    for item in data.get("publications", []) if isinstance(data, dict) else []:
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=[a.get("name") for a in item.get("authors", []) if isinstance(a, dict) and a.get("name")],
+                year=_safe_int(item.get("year")),
+                venue=(item.get("journal") or {}).get("title") if isinstance(item.get("journal"), dict) else None,
+                abstract=compact_text(item.get("abstract")),
+                doi=item.get("doi"),
+                url=item.get("linkout"),
+                citation_count=_safe_int(item.get("times_cited")),
+                source="dimensions",
+                sources=["dimensions"],
+                raw={"query": query},
+            )
+        )
+    return [p for p in papers if p.title]
+
+
 def _xml_text(entry: ET.Element, path: str, ns: dict[str, str]) -> str:
     value = entry.findtext(path, default="", namespaces=ns)
     return value or ""
@@ -236,6 +641,122 @@ def _content_value(value):
     if isinstance(value, dict) and "value" in value:
         return value["value"]
     return value
+
+
+def _search_rxiv(server: str, query: str, limit: int, since_year: int | None) -> list[Paper]:
+    today = dt.date.today().isoformat()
+    start = f"{since_year or dt.date.today().year - 2}-01-01"
+    url = f"https://api.biorxiv.org/details/{server}/{start}/{today}/0"
+    data = safe_fetch(lambda: request_json(url, timeout=18), {})
+    collection = data.get("collection", []) if isinstance(data, dict) else []
+    terms = [token for token in re.findall(r"[a-zA-Z0-9]+", query.lower()) if len(token) > 2]
+    papers: list[Paper] = []
+    for item in collection:
+        text = " ".join([item.get("title") or "", item.get("abstract") or ""]).lower()
+        if terms and not any(term in text for term in terms):
+            continue
+        year = _safe_int(str(item.get("date", ""))[:4])
+        doi = item.get("doi")
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=[a.strip() for a in (item.get("authors") or "").split(";") if a.strip()],
+                year=year,
+                venue=server,
+                abstract=compact_text(item.get("abstract")),
+                doi=doi,
+                url=f"https://doi.org/{doi}" if doi else None,
+                pdf_url=f"https://www.{server}.org/content/{doi}v{item.get('version', '1')}.full.pdf" if doi else None,
+                source=server,
+                sources=[server],
+                raw={"query": query, "server": server},
+            )
+        )
+        if len(papers) >= limit:
+            break
+    return [p for p in papers if p.title]
+
+
+def _element_text(node: ET.Element | None, path: str) -> str | None:
+    if node is None:
+        return None
+    value = node.findtext(path)
+    return compact_text(value) if value else None
+
+
+def _pubmed_year(article: ET.Element) -> int | None:
+    for path in [".//ArticleDate/Year", ".//PubDate/Year", ".//PubMedPubDate[@PubStatus='pubmed']/Year"]:
+        year = _safe_int(_element_text(article, path))
+        if year:
+            return year
+    medline_date = _element_text(article, ".//PubDate/MedlineDate") or ""
+    match = re.search(r"\d{4}", medline_date)
+    return _safe_int(match.group(0)) if match else None
+
+
+def _dblp_authors(value) -> list[str]:
+    if isinstance(value, dict):
+        author = value.get("author")
+        if isinstance(author, list):
+            return [item.get("text") if isinstance(item, dict) else str(item) for item in author if item]
+        if isinstance(author, dict):
+            return [author.get("text") or ""]
+        if isinstance(author, str):
+            return [author]
+    return []
+
+
+def _safe_int(value) -> int | None:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _init_diagnostics(source_names: list[str], source_configs: dict[str, SourceConfig], queries: list[str]) -> dict:
+    sources = {}
+    for name in source_names:
+        spec = SOURCE_SPECS[name]
+        cfg = source_configs.get(name)
+        sources[name] = {
+            "display_name": spec.display_name,
+            "domain": spec.domain,
+            "requires_key": spec.requires_key,
+            "configured": bool(configured_api_key(name, cfg)),
+            "queries": 0,
+            "returned": 0,
+            "status": "pending",
+            "errors": [],
+        }
+    return {
+        "enabled_sources": source_names,
+        "query_count": len(queries),
+        "total_returned": 0,
+        "sources": sources,
+    }
+
+
+SEARCHERS = {
+    "arxiv": search_arxiv,
+    "semantic_scholar": search_semantic_scholar,
+    "openalex": search_openalex,
+    "crossref": search_crossref,
+    "openreview": search_openreview,
+    "pubmed": search_pubmed,
+    "europe_pmc": search_europe_pmc,
+    "biorxiv": search_biorxiv,
+    "medrxiv": search_medrxiv,
+    "dblp": search_dblp,
+    "acl_anthology": search_acl_anthology,
+    "core": search_core,
+    "lens": search_lens,
+    "ieee": search_ieee,
+    "springer": search_springer,
+    "elsevier": search_elsevier,
+    "dimensions": search_dimensions,
+}
 
 
 def iter_search_errors(_: Iterable[Paper]) -> list[str]:

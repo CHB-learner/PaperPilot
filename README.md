@@ -22,7 +22,7 @@ It is designed as a file-system based research workflow, not a chatbot. Each run
 ## Highlights
 
 - Natural-language research intake with LLM-assisted query understanding.
-- Multi-source paper search: arXiv, Semantic Scholar, OpenAlex, Crossref, and OpenReview.
+- Layered Source Registry with arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, ACL Anthology, and optional API-key sources.
 - Local corpus import with `--user-corpus` for PDF, BibTeX, RIS, Markdown, and text files.
 - Research protocol generation with inclusion/exclusion criteria and negative keywords.
 - Corpus normalization, DOI/arXiv/title-similarity deduplication, ranking, and relevance screening.
@@ -70,6 +70,16 @@ PaperPilot config use deepseek
 PaperPilot config show
 ```
 
+Optional source API keys:
+
+```bash
+PaperPilot sources list
+PaperPilot sources config core
+PaperPilot sources config lens
+PaperPilot sources enable core
+PaperPilot sources test core
+```
+
 Configuration is stored in:
 
 ```text
@@ -100,6 +110,7 @@ PaperPilot "RNA inverse folding sequence design" \
   --max-papers 50 \
   --since-year 2021 \
   --github-filter required \
+  --sources auto \
   --mode apa \
   --quality balanced
 ```
@@ -141,7 +152,7 @@ flowchart LR
   P --> QA[Query Understanding Agent]
   QA --> PL[Planner Agent]
   PL --> RP[Research Protocol Agent]
-  RP --> ST[Search Tools<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview]
+  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL]
   U --> LC[Local Corpus Import]
   LC --> CB[Corpus Builder]
   ST --> CB
@@ -155,6 +166,8 @@ flowchart LR
   RA --> CR[Canonical Report]
   CR --> OUT[ZH/EN Markdown<br/>ZH/EN HTML<br/>ZH/EN PDF]
 ```
+
+Default free sources include arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, and ACL Anthology. Optional API-key sources include CORE, Lens.org, IEEE Xplore, Springer Nature, Elsevier/Scopus, and Dimensions.
 
 The repository also includes an HTML architecture overview:
 
@@ -172,6 +185,7 @@ Core run files:
 - `manifest.json`: generated artifact list.
 - `prompt_manifest.json`: versioned prompt roles and required JSON keys.
 - `registries.json`: built-in ToolRegistry and CapabilityRegistry.
+- `source_diagnostics.json`: enabled sources, returned counts, and source-level errors.
 
 Search and corpus files:
 
@@ -236,6 +250,9 @@ Filter modes:
 --interaction auto|gated
 --quality fast|balanced|strict
 --include-adjacent               include adjacent papers in matrix/appendix
+--sources auto|all|core|biomed|cs|configured
+--enable-source SOURCE           enable one additional source; repeatable
+--disable-source SOURCE          disable one source; repeatable
 ```
 
 ## Development

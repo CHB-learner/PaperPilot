@@ -28,6 +28,8 @@ from literature_agent.protocol import build_protocol
 from literature_agent.processing import apply_github_filter, deduplicate, resolve_code_links
 from literature_agent.query import heuristic_understanding
 from literature_agent.report import build_canonical_report, render_html_reports, render_reports
+from literature_agent.searchers import search_dblp, search_europe_pmc, search_pubmed
+from literature_agent.sources import SourceConfig, resolve_enabled_sources
 from literature_agent.synthesis import build_literature_matrix, build_synthesis
 from literature_agent.utils import create_task_dir, read_api_config
 from literature_agent.utils import ApiConfig
@@ -181,6 +183,136 @@ class ProcessingTests(unittest.TestCase):
             self.assertEqual(config.active, "deepseek")
             self.assertEqual(set(config.profiles), {"deepseek", "openai"})
             self.assertEqual(load_user_config(path).model, "deepseek-chat")
+
+    def test_app_config_source_settings_roundtrip(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.json"
+            save_app_config(
+                AppConfig(
+                    active=None,
+                    profiles={},
+                    sources={"core": SourceConfig(enabled=True, api_key="core-key")},
+                ),
+                path,
+            )
+
+            config = load_app_config(path)
+
+            self.assertTrue(config.sources["core"].enabled)
+            self.assertEqual(config.sources["core"].api_key, "core-key")
+
+    def test_source_presets_enable_expected_domains(self):
+        biomed = set(resolve_enabled_sources("biomed"))
+        cs = set(resolve_enabled_sources("cs"))
+
+        self.assertIn("pubmed", biomed)
+        self.assertIn("europe_pmc", biomed)
+        self.assertIn("dblp", cs)
+        self.assertIn("acl_anthology", cs)
+        self.assertNotIn("pubmed", cs)
+
+    def test_optional_source_requires_configuration(self):
+        self.assertNotIn("core", resolve_enabled_sources("all"))
+        enabled = resolve_enabled_sources("all", {"core": SourceConfig(api_key="core-key")})
+        self.assertIn("core", enabled)
+
+    def test_deduplicate_uses_pubmed_and_dblp_identifiers(self):
+        papers = [
+            Paper(title="Biomedical Paper", raw={"identifiers": {"pmid": "123"}}),
+            Paper(title="Biomedical Paper Variant", raw={"identifiers": {"pmid": "123"}}, pdf_url="https://example.org/p.pdf"),
+            Paper(title="CS Paper", raw={"identifiers": {"dblp_key": "conf/acl/X"}}),
+            Paper(title="CS Paper Extended", raw={"identifiers": {"dblp_key": "conf/acl/X"}}, doi="10.1/x"),
+        ]
+
+        merged = deduplicate(papers)
+
+        self.assertEqual(len(merged), 2)
+        self.assertTrue(any(p.pdf_url == "https://example.org/p.pdf" for p in merged))
+
+    def test_parse_pubmed_response(self):
+        import literature_agent.searchers as module
+
+        esearch = {"esearchresult": {"idlist": ["123"]}}
+        xml = """<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>123</PMID><Article><ArticleTitle>RNA inverse folding with AI</ArticleTitle><Abstract><AbstractText>Sequence design.</AbstractText></Abstract><Journal><Title>Nucleic Acids Research</Title><JournalIssue><PubDate><Year>2024</Year></PubDate></JournalIssue></Journal><AuthorList><Author><ForeName>Ada</ForeName><LastName>Lovelace</LastName></Author></AuthorList></Article></MedlineCitation><PubmedData><ArticleIdList><ArticleId IdType="doi">10.1/rna</ArticleId><ArticleId IdType="pmc">PMC1</ArticleId></ArticleIdList></PubmedData></PubmedArticle></PubmedArticleSet>"""
+        original_json = module.request_json
+        original_text = module.request_text
+        try:
+            module.request_json = lambda *args, **kwargs: esearch
+            module.request_text = lambda *args, **kwargs: xml
+
+            papers = search_pubmed("RNA inverse folding", 5, 2021)
+
+            self.assertEqual(len(papers), 1)
+            self.assertEqual(papers[0].doi, "10.1/rna")
+            self.assertEqual(papers[0].raw["identifiers"]["pmid"], "123")
+        finally:
+            module.request_json = original_json
+            module.request_text = original_text
+
+    def test_parse_europe_pmc_response(self):
+        import literature_agent.searchers as module
+
+        payload = {
+            "resultList": {
+                "result": [
+                    {
+                        "title": "RNA design with language models",
+                        "authorString": "A. Author, B. Writer",
+                        "pubYear": "2025",
+                        "journalTitle": "Bioinformatics",
+                        "abstractText": "AI sequence design.",
+                        "doi": "10.1/epmc",
+                        "pmid": "456",
+                        "pmcid": "PMC456",
+                        "citedByCount": "7",
+                    }
+                ]
+            }
+        }
+        original_json = module.request_json
+        try:
+            module.request_json = lambda *args, **kwargs: payload
+
+            papers = search_europe_pmc("RNA design", 5, 2021)
+
+            self.assertEqual(len(papers), 1)
+            self.assertEqual(papers[0].citation_count, 7)
+            self.assertEqual(papers[0].raw["identifiers"]["pmcid"], "PMC456")
+        finally:
+            module.request_json = original_json
+
+    def test_parse_dblp_response(self):
+        import literature_agent.searchers as module
+
+        payload = {
+            "result": {
+                "hits": {
+                    "hit": [
+                        {
+                            "info": {
+                                "title": "Agentic retrieval augmented generation",
+                                "authors": {"author": [{"text": "Jane Doe"}]},
+                                "year": "2024",
+                                "venue": "ACL",
+                                "doi": "10.1/acl",
+                                "url": "https://dblp.org/rec/conf/acl/X",
+                                "key": "conf/acl/X",
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+        original_json = module.request_json
+        try:
+            module.request_json = lambda *args, **kwargs: payload
+
+            papers = search_dblp("agent rag", 5, 2021)
+
+            self.assertEqual(len(papers), 1)
+            self.assertEqual(papers[0].raw["identifiers"]["dblp_key"], "conf/acl/X")
+        finally:
+            module.request_json = original_json
 
     def test_mask_secret(self):
         self.assertEqual(mask_secret(None), "(not set)")

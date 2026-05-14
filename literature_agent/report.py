@@ -30,6 +30,7 @@ def build_canonical_report(
     reflection: dict,
     evidence_ledger: dict[str, Any] | None = None,
     review_agents: dict[str, Any] | None = None,
+    source_diagnostics: dict[str, Any] | None = None,
     *,
     mode: str,
     include_adjacent: bool,
@@ -97,6 +98,8 @@ def build_canonical_report(
         "verification": verification_by_key,
         "pdf_summary": pdf_summary,
         "download_log": download_log,
+        "source_diagnostics": source_diagnostics or {},
+        "source_coverage": _source_coverage(source_diagnostics),
         "reflection": reflection,
         "evidence_ledger": evidence_ledger or {},
         "review_agents": review_agents or {},
@@ -372,6 +375,25 @@ def _limitations(protocol: ResearchProtocol, quality_gate: QualityGate, pdf_summ
     return list(dict.fromkeys(limitations))
 
 
+def _source_coverage(source_diagnostics: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not source_diagnostics:
+        return []
+    coverage = []
+    for name, info in (source_diagnostics.get("sources") or {}).items():
+        coverage.append(
+            {
+                "name": name,
+                "display_name": info.get("display_name") or name,
+                "domain": info.get("domain") or "",
+                "status": info.get("status") or "unknown",
+                "queries": info.get("queries") or 0,
+                "returned": info.get("returned") or 0,
+                "errors": len(info.get("errors") or []),
+            }
+        )
+    return coverage
+
+
 def _author_text(authors: list[str]) -> str:
     if not authors:
         return "Unknown author"
@@ -614,6 +636,14 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 
 检索来源：{{ report.protocol.search_sources | join(", ") }}。开放 PDF 只在明确可访问时下载，不绕过付费墙。
 
+### 来源覆盖情况
+
+| 来源 | 领域 | 状态 | 查询数 | 返回数 | 错误数 |
+|---|---|---|---:|---:|---:|
+{% for source in report.source_coverage %}
+| {{ source.display_name }} | {{ source.domain }} | {{ source.status }} | {{ source.queries }} | {{ source.returned }} | {{ source.errors }} |
+{% endfor %}
+
 ## 3. 研究背景与问题定义
 
 {{ report.field_overview.background }}
@@ -793,6 +823,14 @@ Research question: {{ report.protocol.research_question }}
 | Reported papers | {{ report.prisma.reported }} |
 
 Sources searched: {{ report.protocol.search_sources | join(", ") }}. Open PDFs were downloaded only when clearly available; no paywall bypassing was attempted.
+
+### Source Coverage
+
+| Source | Domain | Status | Queries | Returned | Errors |
+|---|---|---|---:|---:|---:|
+{% for source in report.source_coverage %}
+| {{ source.display_name }} | {{ source.domain }} | {{ source.status }} | {{ source.queries }} | {{ source.returned }} | {{ source.errors }} |
+{% endfor %}
 
 ## 3. Research Background and Problem Definition
 

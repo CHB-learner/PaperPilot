@@ -3,22 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PaperPilot v1.1 Agent 流程图</title>
+  <title>PaperPilot v1.2 Agent 流程图</title>
   <style>
     :root {
       color-scheme: light;
-      --ink: #172033;
-      --muted: #5b6472;
-      --line: #d4dae3;
+      --ink: #152033;
+      --muted: #637083;
+      --line: #d7dee9;
       --panel: #ffffff;
-      --bg: #f5f7fb;
-      --tool: #1f6feb;
-      --llm: #7a3eb1;
-      --data: #0a7d74;
-      --gate: #b45309;
-      --quality: #0f766e;
+      --panel-soft: #f8fafc;
+      --bg: #f3f6fb;
+      --tool: #2563eb;
+      --llm: #7c3aed;
+      --data: #0f766e;
+      --gate: #c2410c;
+      --quality: #047857;
       --warn: #b42318;
-      --shadow: 0 12px 26px rgba(23, 32, 51, 0.08);
+      --shadow: 0 18px 45px rgba(21, 32, 51, 0.08);
+      --shadow-soft: 0 8px 22px rgba(21, 32, 51, 0.06);
+      --radius: 14px;
     }
 
     * {
@@ -29,41 +32,77 @@
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
       color: var(--ink);
-      background: var(--bg);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.09), transparent 340px),
+        radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.08), transparent 320px),
+        linear-gradient(#f7f9fd 0 0),
+        var(--bg);
       line-height: 1.45;
     }
 
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(99, 112, 131, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 112, 131, 0.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 70%);
+    }
+
     .page {
-      max-width: 1420px;
+      position: relative;
+      max-width: 1480px;
       margin: 0 auto;
-      padding: 28px 20px 42px;
+      padding: 30px 22px 48px;
     }
 
     header {
+      position: relative;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
-      align-items: end;
-      padding-bottom: 18px;
-      border-bottom: 1px solid var(--line);
+      gap: 22px;
+      align-items: center;
+      padding: 26px;
+      border: 1px solid rgba(215, 222, 233, 0.92);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    header::after {
+      content: "";
+      position: absolute;
+      right: -120px;
+      top: -120px;
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(15, 118, 110, 0.13), transparent 62%);
     }
 
     h1 {
+      position: relative;
       margin: 0;
-      font-size: 30px;
+      font-size: 36px;
       line-height: 1.16;
       letter-spacing: 0;
     }
 
     .subtitle {
-      margin: 8px 0 0;
+      position: relative;
+      margin: 10px 0 0;
       color: var(--muted);
-      font-size: 15px;
-      max-width: 880px;
+      font-size: 16px;
+      max-width: 940px;
     }
 
     .version {
-      margin-top: 10px;
+      position: relative;
+      margin-top: 16px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -71,15 +110,44 @@
       font-size: 12px;
     }
 
+    .metrics {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      max-width: 760px;
+    }
+
+    .metric {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(248, 250, 252, 0.86);
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
     .pill,
     .chip {
       display: inline-flex;
       align-items: center;
       min-height: 28px;
-      padding: 5px 9px;
+      padding: 6px 10px;
       border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--panel);
+      border-radius: 999px;
+      background: rgba(248, 250, 252, 0.92);
       white-space: nowrap;
     }
 
@@ -88,7 +156,9 @@
       flex-wrap: wrap;
       justify-content: flex-end;
       gap: 8px;
-      max-width: 600px;
+      max-width: 470px;
+      position: relative;
+      z-index: 1;
     }
 
     .chip {
@@ -111,16 +181,16 @@
     .dot.warn { background: var(--warn); }
 
     .flow-wrap {
-      margin-top: 24px;
+      margin-top: 22px;
       overflow-x: auto;
-      padding: 6px 2px 20px;
+      padding: 10px 8px 26px;
     }
 
     .flow {
-      min-width: 1320px;
+      min-width: 1820px;
       display: grid;
-      grid-template-columns: repeat(9, minmax(132px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(9, minmax(185px, 1fr));
+      gap: 22px;
       align-items: stretch;
     }
 
@@ -139,16 +209,25 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: var(--muted);
+      padding-left: 4px;
     }
 
     .node {
       position: relative;
-      min-height: 214px;
-      padding: 13px 12px 12px;
-      border: 1px solid var(--line);
+      min-height: 278px;
+      padding: 17px 16px 16px;
+      border: 1px solid rgba(215, 222, 233, 0.95);
       border-top: 5px solid var(--tool);
-      border-radius: 8px;
-      background: var(--panel);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-soft);
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .node:hover,
+    .flow-card:hover,
+    .panel:hover {
+      transform: translateY(-2px);
       box-shadow: var(--shadow);
     }
 
@@ -156,8 +235,8 @@
       content: "";
       position: absolute;
       top: 50%;
-      right: -14px;
-      width: 14px;
+      right: -22px;
+      width: 22px;
       border-top: 2px solid var(--line);
     }
 
@@ -165,7 +244,7 @@
       content: "";
       position: absolute;
       top: calc(50% - 5px);
-      right: -17px;
+      right: -25px;
       width: 0;
       height: 0;
       border-top: 6px solid transparent;
@@ -185,27 +264,29 @@
     .node.warn { border-top-color: var(--warn); }
 
     .node h2 {
-      margin: 0 0 8px;
-      font-size: 15px;
+      margin: 0 0 10px;
+      font-size: 16px;
       line-height: 1.25;
       letter-spacing: 0;
     }
 
     .node p {
       margin: 0;
-      font-size: 12px;
+      font-size: 13px;
+      line-height: 1.5;
       color: var(--muted);
     }
 
     .node ul {
-      margin: 9px 0 0;
-      padding-left: 17px;
+      margin: 12px 0 0;
+      padding-left: 18px;
       color: var(--muted);
-      font-size: 11.5px;
+      font-size: 12.2px;
+      line-height: 1.45;
     }
 
     .node li + li {
-      margin-top: 3px;
+      margin-top: 5px;
     }
 
     code,
@@ -217,16 +298,17 @@
     .layers {
       margin-top: 18px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
     }
 
     .panel {
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-soft);
       padding: 16px;
+      transition: transform .18s ease, box-shadow .18s ease;
     }
 
     .panel h2 {
@@ -251,8 +333,8 @@
       margin: 9px 0 0;
       padding: 9px 10px;
       border: 1px solid #d9dee8;
-      border-radius: 6px;
-      background: #f8fafc;
+      border-radius: 10px;
+      background: var(--panel-soft);
       color: #1f2937;
       font-size: 12px;
       overflow-x: auto;
@@ -261,7 +343,7 @@
 
     .outputs {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 8px;
       margin-top: 10px;
     }
@@ -270,9 +352,9 @@
       min-height: 32px;
       display: flex;
       align-items: center;
-      padding: 7px 8px;
+      padding: 8px 9px;
       border: 1px solid #d9dee8;
-      border-radius: 6px;
+      border-radius: 10px;
       background: #f8fafc;
       color: #1f2937;
       font-size: 11.5px;
@@ -282,9 +364,9 @@
     .matrix {
       margin-top: 18px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-soft);
       overflow: hidden;
     }
 
@@ -297,10 +379,10 @@
     .agent-map {
       margin-top: 18px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      box-shadow: var(--shadow);
-      padding: 16px;
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-soft);
+      padding: 18px;
       overflow-x: auto;
     }
 
@@ -342,8 +424,10 @@
       padding: 11px 12px;
       border: 1px solid var(--line);
       border-top: 4px solid var(--tool);
-      border-radius: 8px;
+      border-radius: 12px;
       background: #ffffff;
+      box-shadow: 0 8px 18px rgba(21, 32, 51, 0.04);
+      transition: transform .18s ease, box-shadow .18s ease;
     }
 
     .flow-card.llm { border-top-color: var(--llm); }
@@ -418,7 +502,7 @@
     .note-card {
       padding: 10px 11px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 12px;
       background: #f8fafc;
       color: var(--muted);
       font-size: 12px;
@@ -440,7 +524,7 @@
 
     th {
       color: var(--ink);
-      background: #f8fafc;
+      background: #f1f5f9;
       font-weight: 800;
     }
 
@@ -462,8 +546,16 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      h1 {
+        font-size: 28px;
+      }
+
       .dataflow-note {
         grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .page {
@@ -476,14 +568,32 @@
   <main class="page">
     <header>
       <div>
-        <h1>PaperPilot v1.1 Agent 流程图</h1>
-        <p class="subtitle">从自然语言调研需求到研究协议、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.1 增加 Prompt Registry、Tool/Capability Registry、事件流、用户本地语料、claim 级证据账本和复核 Agent 检查。</p>
+        <h1>PaperPilot v1.2 Agent 流程图</h1>
+        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.2 增加 AI/CS + 生医多来源检索、source diagnostics、optional-key source 配置和来源覆盖报告。</p>
         <div class="version">
-          <span class="pill">v1.1 architecture</span>
+          <span class="pill">v1.2 architecture</span>
           <span class="pill">State-machine workflow</span>
           <span class="pill">Canonical bilingual report</span>
           <span class="pill">Citation-numbered reports</span>
           <span class="pill">Prompt / Tool / Capability registry</span>
+        </div>
+        <div class="metrics" aria-label="架构摘要">
+          <div class="metric">
+            <strong>9</strong>
+            <span>workflow stages</span>
+          </div>
+          <div class="metric">
+            <strong>7</strong>
+            <span>versioned prompts</span>
+          </div>
+          <div class="metric">
+            <strong>17</strong>
+            <span>paper sources</span>
+          </div>
+          <div class="metric">
+            <strong>6</strong>
+            <span>report outputs</span>
+          </div>
         </div>
       </div>
       <div class="legend" aria-label="模块图例">
@@ -496,7 +606,7 @@
       </div>
     </header>
 
-    <section class="flow-wrap" aria-label="PaperPilot v1.1 主流程">
+    <section class="flow-wrap" aria-label="PaperPilot v1.2 主流程">
       <div class="flow">
         <div class="stage">
           <div class="stage-title">Intake</div>
@@ -545,13 +655,14 @@
         <div class="stage">
           <div class="stage-title">Search</div>
           <article class="node">
-            <h2>Tool Registry Search</h2>
-            <p>并发调用多源论文 API；也可用 <code>--user-corpus</code> 先导入本地 PDF/BibTeX/RIS/Markdown 作为用户语料。</p>
+            <h2>Source Registry Search</h2>
+            <p>并发调用分层论文来源；默认启用免 key 来源，配置 API key 后自动启用高覆盖 optional sources。</p>
             <ul>
-              <li>arXiv</li>
-              <li>Semantic Scholar</li>
-              <li>OpenAlex / Crossref</li>
-              <li>OpenReview</li>
+              <li>arXiv / Semantic Scholar / OpenAlex</li>
+              <li>Crossref / OpenReview / DBLP / ACL</li>
+              <li>PubMed / Europe PMC / bioRxiv / medRxiv</li>
+              <li>CORE / Lens / IEEE / Springer / Elsevier / Dimensions</li>
+              <li><code>source_diagnostics.json</code></li>
               <li><code>registries.json</code></li>
               <li><code>user_corpus_log.json</code></li>
             </ul>
@@ -564,7 +675,7 @@
             <h2>Normalize + Corpus</h2>
             <p>标准化论文模型，增强去重，并统一代码资源字段。</p>
             <ul>
-              <li>DOI / arXiv / OpenReview</li>
+              <li>DOI / arXiv / PMID / PMCID / OpenReview / DBLP</li>
               <li>标题相似度合并预印本和发表版</li>
               <li><code>CodeArtifact</code> 置信度</li>
               <li><code>corpus.json</code></li>
@@ -700,10 +811,12 @@
           <div class="flow-band">
             <article class="flow-card arrow-right">
               <h3>Search Tools</h3>
-              <p>在线来源与本地语料共同进入候选池。</p>
+              <p>Source Registry、多源 API 与本地语料共同进入候选池。</p>
               <ul>
-                <li>arXiv / Semantic Scholar</li>
-                <li>OpenAlex / Crossref / OpenReview</li>
+                <li>AI/CS: arXiv / OpenReview / DBLP / ACL</li>
+                <li>BioMed: PubMed / Europe PMC / bioRxiv / medRxiv</li>
+                <li>General: S2 / OpenAlex / Crossref / optional-key sources</li>
+                <li><code>source_diagnostics.json</code></li>
                 <li><code>user_corpus_log.json</code></li>
               </ul>
             </article>
@@ -815,7 +928,7 @@
 
     <section class="layers" aria-label="关键架构层">
       <article class="panel">
-        <h2>v1.1 状态机与事件流</h2>
+        <h2>v1.2 状态机与事件流</h2>
         <p>PaperPilot 现在不是简单 8 步脚本，而是保存阶段状态的研究工作流。每个 run folder 都有状态、清单和可审计中间产物。</p>
         <div class="code">Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis -> Review -> Report</div>
         <ul>
@@ -865,7 +978,8 @@
         <div class="code">prompt_manifest.json + registries.json + events.jsonl</div>
         <ul>
           <li>Prompt Registry 管理 QueryUnderstanding、Planner、Protocol、Screening、Synthesis、Reflection、Abstract。</li>
-          <li>ToolRegistry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、GitHub、PDF、fulltext、report renderer。</li>
+          <li>Source Registry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology 以及 optional-key sources。</li>
+          <li>ToolRegistry 记录 GitHub、PDF、fulltext、report renderer 等非搜索工具。</li>
           <li>CapabilityRegistry 预留 literature_review、systematic_review、code_reproducibility_review 和 topic_monitoring。</li>
         </ul>
       </article>

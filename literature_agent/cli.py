@@ -20,6 +20,7 @@ from .config import (
 )
 from .intent import ParsedIntent, parse_research_intent_with_llm
 from .openai_client import OpenAIClient
+from .sources import run_sources_command
 from .utils import read_api_config
 from .workflow import inspect_run, resolve_run_dir, run_v1_workflow
 
@@ -109,6 +110,24 @@ def build_parser(language: str = "bilingual") -> argparse.ArgumentParser:
         default=[],
         help=text["user_corpus"],
     )
+    parser.add_argument(
+        "--sources",
+        choices=["auto", "all", "core", "biomed", "cs", "configured"],
+        default="auto",
+        help=text["sources"],
+    )
+    parser.add_argument(
+        "--enable-source",
+        action="append",
+        default=[],
+        help=text["enable_source"],
+    )
+    parser.add_argument(
+        "--disable-source",
+        action="append",
+        default=[],
+        help=text["disable_source"],
+    )
     return parser
 
 
@@ -121,8 +140,10 @@ def parser_text(language: str) -> dict[str, str]:
   PaperPilot
   PaperPilot config set --base-url https://api.deepseek.com --model deepseek-chat
   PaperPilot config show
+  PaperPilot sources list
+  PaperPilot sources config core
   PaperPilot "RNA" --auto-confirm --max-papers 50
-  PaperPilot "LLM agent" --auto-confirm --github-filter required
+  PaperPilot "LLM agent" --auto-confirm --github-filter required --sources cs
 
 输出:
   task.json               任务信息
@@ -148,6 +169,7 @@ def parser_text(language: str) -> dict[str, str]:
   pdfs/                   开放 PDF 文件
   fulltext/               PDF 全文抽取文本
   events.jsonl            阶段事件流
+  source_diagnostics.json 来源覆盖与错误诊断
   evidence_ledger.json    claim 级证据账本
   review_agent_findings.json  复核 Agent 检查结果
 """,
@@ -168,6 +190,9 @@ def parser_text(language: str) -> dict[str, str]:
             "quality": "质量门严格度：fast|balanced|strict，默认 balanced",
             "include_adjacent": "在附录/矩阵中包含相关但非核心论文",
             "user_corpus": "导入本地 PDF/BibTeX/RIS/Markdown 文件或目录，可重复传入",
+            "sources": "检索来源 preset：auto|all|core|biomed|cs|configured，默认 auto",
+            "enable_source": "额外启用某个来源，可重复传入",
+            "disable_source": "禁用某个来源，可重复传入",
         }
     if language == "en":
         return {
@@ -177,8 +202,10 @@ Examples:
   PaperPilot
   PaperPilot config set --base-url https://api.deepseek.com --model deepseek-chat
   PaperPilot config show
+  PaperPilot sources list
+  PaperPilot sources config core
   PaperPilot "RNA" --auto-confirm --max-papers 50
-  PaperPilot "LLM agent" --auto-confirm --github-filter required
+  PaperPilot "LLM agent" --auto-confirm --github-filter required --sources cs
 
 Outputs:
   task.json               Task metadata
@@ -204,6 +231,7 @@ Outputs:
   pdfs/                   Open-access PDFs
   fulltext/               Extracted PDF text
   events.jsonl            Stage event stream
+  source_diagnostics.json Source coverage and errors
   evidence_ledger.json    Claim-level evidence ledger
   review_agent_findings.json  Review-agent findings
 """,
@@ -224,6 +252,9 @@ Outputs:
             "quality": "Quality gate strictness: fast|balanced|strict, default: balanced",
             "include_adjacent": "Include adjacent non-core papers in appendix/matrix",
             "user_corpus": "Import local PDF/BibTeX/RIS/Markdown file or directory; repeatable",
+            "sources": "Search source preset: auto|all|core|biomed|cs|configured, default: auto",
+            "enable_source": "Enable an additional source; repeatable",
+            "disable_source": "Disable a source; repeatable",
         }
     return {
         "description": "AI 文献检索 Agent / AI literature search agent",
@@ -232,8 +263,10 @@ Outputs:
   PaperPilot
   PaperPilot config set --base-url https://api.deepseek.com --model deepseek-chat
   PaperPilot config show
+  PaperPilot sources list
+  PaperPilot sources config core
   PaperPilot "RNA" --auto-confirm --max-papers 50
-  PaperPilot "LLM agent" --auto-confirm --github-filter required
+  PaperPilot "LLM agent" --auto-confirm --github-filter required --sources cs
   literature-agent "vision language model" --auto-confirm --no-download
 
 输出 / Outputs:
@@ -260,6 +293,7 @@ Outputs:
   pdfs/                   开放 PDF 文件 / open-access PDFs
   fulltext/               PDF 文本抽取 / extracted PDF text
   events.jsonl            阶段事件流 / stage event stream
+  source_diagnostics.json 来源覆盖与错误诊断 / source coverage and errors
   evidence_ledger.json    claim 级证据账本 / claim-level evidence ledger
   review_agent_findings.json  复核 Agent 检查结果 / review-agent findings
 """,
@@ -280,6 +314,9 @@ Outputs:
         "quality": "质量门严格度 fast|balanced|strict，默认 balanced / Quality gate strictness",
         "include_adjacent": "包含相关但非核心论文 / Include adjacent non-core papers",
         "user_corpus": "导入本地语料文件或目录，可重复传入 / Import local corpus path; repeatable",
+        "sources": "检索来源 preset auto|all|core|biomed|cs|configured，默认 auto / Search source preset",
+        "enable_source": "额外启用来源，可重复传入 / Enable an additional source; repeatable",
+        "disable_source": "禁用来源，可重复传入 / Disable a source; repeatable",
     }
 
 
@@ -287,6 +324,8 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "config":
         return run_config_command(argv[1:])
+    if argv and argv[0] == "sources":
+        return run_sources_command(argv[1:])
     if argv and argv[0] == "inspect":
         if len(argv) < 2:
             print("Usage: PaperPilot inspect <task-id-or-run-dir>")
@@ -349,6 +388,9 @@ def resume_run(argv: list[str]) -> int:
         quality=task.get("quality") or defaults.quality,
         include_adjacent=bool(task.get("include_adjacent", defaults.include_adjacent)),
         user_corpus=task.get("user_corpus") or [],
+        sources=task.get("sources") or defaults.sources,
+        enable_source=task.get("enable_source") or [],
+        disable_source=task.get("disable_source") or [],
     )
     return run_agent(args)
 
@@ -477,6 +519,10 @@ def namespace_from_intent(intent: ParsedIntent, defaults: argparse.Namespace) ->
         interaction=defaults.interaction,
         quality=defaults.quality,
         include_adjacent=defaults.include_adjacent,
+        user_corpus=defaults.user_corpus,
+        sources=defaults.sources,
+        enable_source=defaults.enable_source,
+        disable_source=defaults.disable_source,
     )
 
 
