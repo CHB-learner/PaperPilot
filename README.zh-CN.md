@@ -2,6 +2,10 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+<p align="center">
+  <img src="assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
+</p>
+
 [![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
 [![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=python)](https://pypi.org/project/paperpilot/)
 [![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)

@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PaperPilot logo">
+  <rect width="512" height="512" rx="112" fill="#0F172A"/>
+  <path d="M109 358L404 101L332 404L257 292L109 358Z" fill="#F8FAFC"/>
+  <path d="M257 292L404 101L214 268L109 358L257 292Z" fill="#38BDF8"/>
+  <path d="M257 292L332 404L292 270L404 101L257 292Z" fill="#22C55E"/>
+  <path d="M214 268L257 292L404 101L214 268Z" fill="#FFFFFF"/>
+  <circle cx="125" cy="132" r="15" fill="#F59E0B"/>
+  <circle cx="374" cy="367" r="11" fill="#A78BFA"/>
+  <path d="M123 420H389" stroke="#334155" stroke-width="18" stroke-linecap="round"/>
+</svg>
