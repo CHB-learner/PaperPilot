@@ -20,7 +20,7 @@ from literature_agent.config import (
 from literature_agent.cli import build_parser
 from literature_agent.cli import main as cli_main
 from literature_agent.corpus import corpus_items_from_papers, enhanced_deduplicate, split_corpus
-from literature_agent.intent import parse_research_intent, parse_research_intent_with_llm
+from literature_agent.intent import ParsedIntent, parse_research_intent, parse_research_intent_with_llm
 from literature_agent.models import Paper
 from literature_agent.openai_client import OpenAIClient
 from literature_agent.pdf_report import write_pdf_report
@@ -32,6 +32,8 @@ from literature_agent.report import build_canonical_report, render_html_reports,
 from literature_agent.searchers import search_dblp, search_europe_pmc, search_pubmed
 from literature_agent.sources import SourceConfig, resolve_enabled_sources
 from literature_agent.synthesis import build_literature_matrix, build_synthesis
+from literature_agent.ui import console as rich_console
+from literature_agent.ui import print_intent_summary, print_sources_table, source_status_summary
 from literature_agent.utils import create_task_dir, read_api_config
 from literature_agent.utils import ApiConfig
 from literature_agent.verification import build_quality_gate, verify_corpus
@@ -230,6 +232,35 @@ class ProcessingTests(unittest.TestCase):
         self.assertNotIn("core", resolve_enabled_sources("all"))
         enabled = resolve_enabled_sources("all", {"core": SourceConfig(api_key="core-key")})
         self.assertIn("core", enabled)
+
+    def test_rich_source_summary_counts_configured_optional_sources(self):
+        summary = source_status_summary({"core": SourceConfig(api_key="core-key")}, mode="auto")
+
+        self.assertGreater(summary.enabled_free, 0)
+        self.assertEqual(summary.configured_optional, 1)
+        self.assertIn("core", summary.enabled_sources)
+        self.assertNotIn("core", summary.missing_optional)
+
+    def test_rich_intent_and_sources_render_without_terminal(self):
+        intent = ParsedIntent(
+            keyword="RNA inverse folding",
+            search_terms=["RNA inverse folding", "RNA sequence design github"],
+            since_year=2021,
+            max_papers=20,
+            github_filter="required",
+            no_download=True,
+            auto_confirm=True,
+            notes=["unit test"],
+        )
+
+        with rich_console.capture() as capture:
+            print_intent_summary(intent, source_mode="biomed")
+            print_sources_table({"core": SourceConfig(api_key="core-key")}, mode="auto")
+
+        output = capture.get()
+        self.assertIn("Parsed Research Intent", output)
+        self.assertIn("RNA inverse folding", output)
+        self.assertIn("PaperPilot Sources", output)
 
     def test_deduplicate_uses_pubmed_and_dblp_identifiers(self):
         papers = [

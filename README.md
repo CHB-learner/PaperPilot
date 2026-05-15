@@ -22,6 +22,7 @@ It is designed as a file-system based research workflow, not a chatbot. Each run
 ## Highlights
 
 - Natural-language research intake with LLM-assisted query understanding.
+- Rich interactive CLI with startup model/source status, `/model`, `/sources`, and structured confirmation panels.
 - Layered Source Registry with arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, ACL Anthology, and optional API-key sources.
 - Local corpus import with `--user-corpus` for PDF, BibTeX, RIS, Markdown, and text files.
 - Research protocol generation with inclusion/exclusion criteria and negative keywords.
@@ -80,6 +81,8 @@ PaperPilot sources enable core
 PaperPilot sources test core
 ```
 
+Inside interactive mode, use `/sources` to view the same source/API status table without leaving the session.
+
 Configuration is stored in:
 
 ```text
@@ -100,6 +103,15 @@ Interactive mode:
 
 ```bash
 PaperPilot
+```
+
+The interactive shell shows the active LLM profile, model API status, free-source coverage, optional API-key source coverage, and quick commands:
+
+```text
+/model      manage LLM profiles
+/sources    inspect enabled and optional search sources
+/help       show the startup guide again
+exit        quit
 ```
 
 Command mode:

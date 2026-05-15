@@ -22,6 +22,16 @@ from .config import (
 from .intent import ParsedIntent, parse_research_intent_with_llm
 from .openai_client import OpenAIClient
 from .sources import run_sources_command
+from .ui import (
+    console,
+    print_choice_menu,
+    print_error_panel,
+    print_intent_summary,
+    print_sources_table,
+    print_success,
+    print_warning,
+    print_welcome,
+)
 from .utils import read_api_config
 from .workflow import inspect_run, resolve_run_dir, run_v1_workflow
 
@@ -402,23 +412,31 @@ def resume_run(argv: list[str]) -> int:
 def run_agent(args: argparse.Namespace) -> int:
     client = client_from_args(args)
     if not client.available:
-        print("还没有可用的 LLM 配置。请先运行 `PaperPilot` 按提示配置，或使用 `PaperPilot config set/import`。")
-        print("PaperPilot 依赖 LLM 完成需求解析和报告生成；配置完成后再继续会更稳妥。")
+        print_error_panel(
+            "LLM configuration required",
+            "还没有可用的 LLM 配置。请先运行 `PaperPilot` 按提示配置，或使用 `PaperPilot config set/import`。\n"
+            "PaperPilot 依赖 LLM 完成需求解析和报告生成；配置完成后再继续会更稳妥。",
+        )
         return 1
-    return run_v1_workflow(args, client)
+    try:
+        return run_v1_workflow(args, client)
+    except Exception as exc:
+        print_error_panel(
+            "Workflow failed",
+            f"{type(exc).__name__}: {exc}\n\n"
+            "建议查看当前 run folder 中的 state.json、events.jsonl 和 source_diagnostics.json。完整 traceback 会继续输出，方便调试。",
+        )
+        raise
 
 
 def interactive_main(defaults: argparse.Namespace) -> int:
     if not ensure_llm_configured():
         return 1
     client = client_from_args(defaults)
-    print("PaperPilot - AI 文献检索 Agent")
-    print(f"当前模型 / Active model: {active_model_label()}")
-    print("输入你的调研需求。示例：调研RNA逆折叠 序列设计 近五年的文献，要求有代码仓库的")
-    print("输入 /model 管理模型，exit 或 quit 退出。\n")
+    print_welcome(load_app_config(), active_model_label(), source_mode=defaults.sources)
     while True:
         try:
-            text = input("PaperPilot> ").strip()
+            text = console.input("[bold cyan]PaperPilot>[/bold cyan] ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             return 0
@@ -426,14 +444,20 @@ def interactive_main(defaults: argparse.Namespace) -> int:
             continue
         if text.lower() in {"exit", "quit", "q"}:
             return 0
+        if text == "/help":
+            print_welcome(load_app_config(), active_model_label(), source_mode=defaults.sources)
+            continue
         if text == "/model":
             model_menu()
             client = client_from_args(defaults)
-            print(f"当前模型 / Active model: {active_model_label()}")
+            print_success(f"当前模型 / Active model: {active_model_label()}")
             continue
-        print("正在解析需求并生成多样化检索关键词...", flush=True)
+        if text == "/sources":
+            print_sources_table(load_app_config().sources, mode=defaults.sources)
+            continue
+        console.print("[cyan]🧠 正在解析需求并生成多样化检索关键词...[/cyan]")
         intent = parse_research_intent_with_llm(text, client)
-        action = confirm_intent(intent)
+        action = confirm_intent(intent, defaults)
         if action == "run":
             args = namespace_from_intent(intent, defaults)
             return run_agent(args)
@@ -442,51 +466,32 @@ def interactive_main(defaults: argparse.Namespace) -> int:
         return 0
 
 
-def confirm_intent(intent: ParsedIntent) -> str:
+def confirm_intent(intent: ParsedIntent, defaults: argparse.Namespace | None = None) -> str:
+    source_mode = getattr(intent, "sources", None) or getattr(defaults, "sources", "auto")
     while True:
-        print("\n我理解你的需求如下：")
-        print(f"  研究主题 / Keyword: {intent.keyword}")
-        print(f"  起始年份 / Since year: {intent.since_year}")
-        print(f"  论文数量 / Max papers: {intent.max_papers}")
-        print(f"  代码筛选 / Code filter: {intent.github_filter}")
-        print(f"  PDF 下载 / PDF download: {'skip' if intent.no_download else 'enabled'}")
-        print("  多样化检索关键词 / Search terms:")
-        for idx, term in enumerate(intent.search_terms[:12], start=1):
-            print(f"    {idx}. {term}")
-        if intent.notes:
-            print("  解析依据 / Notes:")
-            for note in intent.notes:
-                print(f"    - {note}")
-        print("\n请选择：")
-        print("  1. 开始检索 / Start")
-        print("  2. 修改研究主题 / Edit keyword")
-        print("  3. 修改起始年份 / Edit since year")
-        print("  4. 修改代码筛选 / Edit code filter")
-        print("  5. 修改论文数量 / Edit max papers")
-        print("  6. 切换 PDF 下载 / Toggle PDF download")
-        print("  7. 修改检索关键词 / Edit search terms")
-        print("  8. 重新输入需求 / Restart")
-        print("  0. 退出 / Exit")
-        choice = input("选择 / Choice [1]: ").strip() or "1"
+        print_intent_summary(intent, source_mode=source_mode)
+        print_choice_menu()
+        choice = console.input("[bold]选择 / Choice [1]: [/bold]").strip() or "1"
         if choice == "1":
+            setattr(intent, "sources", source_mode)
             return "run"
         if choice == "2":
-            value = input("新的研究主题 / New keyword: ").strip()
+            value = console.input("新的研究主题 / New keyword: ").strip()
             if value:
                 intent.keyword = value
             continue
         if choice == "3":
-            value = input("新的起始年份，例如 2021 / New since year: ").strip()
+            value = console.input("新的起始年份，例如 2021 / New since year: ").strip()
             if value.isdigit():
                 intent.since_year = int(value)
             continue
         if choice == "4":
-            value = input("代码筛选 any|required|none / Code filter: ").strip().lower()
+            value = console.input("代码筛选 any|required|none / Code filter: ").strip().lower()
             if value in {"any", "required", "none"}:
                 intent.github_filter = value
             continue
         if choice == "5":
-            value = input("论文数量 / Max papers: ").strip()
+            value = console.input("论文数量 / Max papers: ").strip()
             if value.isdigit() and int(value) > 0:
                 intent.max_papers = int(value)
             continue
@@ -494,11 +499,19 @@ def confirm_intent(intent: ParsedIntent) -> str:
             intent.no_download = not intent.no_download
             continue
         if choice == "7":
-            value = input("新的检索关键词，用分号分隔 / New search terms separated by semicolons: ").strip()
+            value = console.input("新的检索关键词，用分号分隔 / New search terms separated by semicolons: ").strip()
             if value:
                 intent.search_terms = [item.strip() for item in value.replace("\n", ";").split(";") if item.strip()]
             continue
         if choice == "8":
+            value = console.input("来源 preset auto|all|core|biomed|cs|configured / Sources: ").strip().lower()
+            if value in {"auto", "all", "core", "biomed", "cs", "configured"}:
+                source_mode = value
+                setattr(intent, "sources", source_mode)
+            else:
+                print_warning("无效来源 preset，保持当前设置。")
+            continue
+        if choice == "9":
             return "restart"
         if choice == "0":
             return "exit"
@@ -524,7 +537,7 @@ def namespace_from_intent(intent: ParsedIntent, defaults: argparse.Namespace) ->
         quality=defaults.quality,
         include_adjacent=defaults.include_adjacent,
         user_corpus=defaults.user_corpus,
-        sources=defaults.sources,
+        sources=getattr(intent, "sources", defaults.sources),
         enable_source=defaults.enable_source,
         disable_source=defaults.disable_source,
     )
@@ -542,9 +555,8 @@ def client_from_args(args: argparse.Namespace) -> OpenAIClient:
 def ensure_llm_configured() -> bool:
     if os.getenv("OPENAI_API_KEY") or load_user_config().api_key:
         return True
-    print("未检测到可用的 LLM 配置。")
-    print("PaperPilot 需要先连接一个 LLM，用于理解需求、扩展检索关键词和生成报告。")
-    answer = input("现在配置吗？[Y/n] ").strip().lower()
+    print_warning("未检测到可用的 LLM 配置。PaperPilot 需要先连接一个 LLM，用于理解需求、扩展检索关键词和生成报告。")
+    answer = console.input("现在配置吗？[Y/n] ").strip().lower()
     if answer in {"n", "no"}:
         print("已取消配置。你可以稍后运行 `PaperPilot config set` 或 `PaperPilot config import <文件>` 后再使用。")
         return False
@@ -552,12 +564,12 @@ def ensure_llm_configured() -> bool:
 
 
 def first_time_config_wizard() -> bool:
-    print("\n请选择配置方式：")
-    print("  1. 手动输入 / Manual input")
-    print("  2. 导入本地 JSON 文件 / Import local JSON file")
-    choice = input("选择 / Choice [1]: ").strip() or "1"
+    console.print("\n[bold cyan]请选择配置方式 / Configure LLM[/bold cyan]")
+    console.print("  [bold]1[/bold]. 手动输入 / Manual input")
+    console.print("  [bold]2[/bold]. 导入本地 JSON 文件 / Import local JSON file")
+    choice = console.input("选择 / Choice [1]: ").strip() or "1"
     if choice == "2":
-        path = input("本地文件路径 / Local file path: ").strip()
+        path = console.input("本地文件路径 / Local file path: ").strip()
         if not path:
             print("未提供文件路径，配置已取消。")
             return False
@@ -576,20 +588,20 @@ def first_time_config_wizard() -> bool:
 
 def model_menu() -> None:
     while True:
-        print("\n/model 模型管理")
+        console.print("\n[bold cyan]/model 模型管理[/bold cyan]")
         print_profiles(load_app_config())
-        print("\n请选择：")
-        print("  1. 新增或更新模型 / Add or update")
-        print("  2. 切换模型 / Switch")
-        print("  3. 删除模型 / Delete")
-        print("  4. 导入本地文件 / Import local file")
-        print("  5. 测试当前模型 / Test active")
-        print("  0. 返回 / Back")
-        choice = input("选择 / Choice [0]: ").strip() or "0"
+        console.print("\n请选择：")
+        console.print("  [bold]1[/bold]. 新增或更新模型 / Add or update")
+        console.print("  [bold]2[/bold]. 切换模型 / Switch")
+        console.print("  [bold]3[/bold]. 删除模型 / Delete")
+        console.print("  [bold]4[/bold]. 导入本地文件 / Import local file")
+        console.print("  [bold]5[/bold]. 测试当前模型 / Test active")
+        console.print("  [bold]0[/bold]. 返回 / Back")
+        choice = console.input("选择 / Choice [0]: ").strip() or "0"
         if choice == "0":
             return
         if choice == "1":
-            name = input("配置名称 / Profile name [default]: ").strip() or "default"
+            name = console.input("配置名称 / Profile name [default]: ").strip() or "default"
             current = load_app_config().profiles.get(name)
             profile = prompt_profile(name, current=current)
             if test_llm_config(profile):
@@ -602,18 +614,18 @@ def model_menu() -> None:
                 print("测试失败，未保存。")
             continue
         if choice == "2":
-            name = input("要切换到哪个配置 / Profile name: ").strip()
+            name = console.input("要切换到哪个配置 / Profile name: ").strip()
             if name:
                 config_use(name)
             continue
         if choice == "3":
-            name = input("要删除哪个配置 / Profile name: ").strip()
+            name = console.input("要删除哪个配置 / Profile name: ").strip()
             if name:
                 config_delete(name)
             continue
         if choice == "4":
-            path = input("本地 JSON 文件路径 / Local JSON file path: ").strip()
-            name = input("配置名称，留空用文件名 / Profile name, empty for filename: ").strip() or None
+            path = console.input("本地 JSON 文件路径 / Local JSON file path: ").strip()
+            name = console.input("配置名称，留空用文件名 / Profile name, empty for filename: ").strip() or None
             if path:
                 config_import(Path(path).expanduser(), name=name, skip_test=False)
             continue
@@ -626,15 +638,19 @@ def prompt_profile(name: str, current=None):
     from .utils import ApiConfig
 
     current = current or ApiConfig()
-    print(f"配置模型 / Configure profile: {name}")
-    base_url = input(f"Base URL [{current.base_url or 'OpenAI default'}]: ").strip() or current.base_url
+    console.print(f"配置模型 / Configure profile: [bold]{name}[/bold]")
+    base_url = console.input(f"Base URL [{current.base_url or 'OpenAI default'}]: ").strip() or current.base_url
     default_model = current.model or ("deepseek-chat" if base_url and "deepseek" in base_url.lower() else "gpt-5.2")
-    model = input(f"Model [{default_model}]: ").strip() or default_model
+    model = console.input(f"Model [{default_model}]: ").strip() or default_model
     api_key = getpass.getpass("API Key，留空则保留当前值 / leave empty to keep current: ").strip() or current.api_key
     return ApiConfig(api_key=api_key, base_url=base_url, model=model)
 
 
 def active_model_label() -> str:
+    if os.getenv("OPENAI_API_KEY"):
+        model = os.getenv("OPENAI_MODEL") or "gpt-5.2"
+        base = os.getenv("OPENAI_BASE_URL") or "OpenAI"
+        return f"env | {model} | {base}"
     app_config = load_app_config()
     if not app_config.active:
         return "未配置"

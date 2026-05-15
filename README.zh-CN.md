@@ -22,6 +22,7 @@ PaperPilot 是一个面向 AI 相关方向的命令行文献调研 Agent。你�
 ## 功能亮点
 
 - 支持自然语言输入研究需求，由 LLM 辅助理解关键词和研究范围。
+- 基于 Rich 的彩色交互式 CLI：启动页展示当前模型、来源/API 状态，并支持 `/model`、`/sources` 和结构化确认面板。
 - 分层 Source Registry：默认覆盖 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology，并支持需要 API key 的扩展来源。
 - 支持 `--user-corpus` 导入本地 PDF、BibTeX、RIS、Markdown、文本文件作为用户语料。
 - 自动生成研究协议，包括研究问题、纳入/排除标准、时间范围和负面关键词。
@@ -81,6 +82,8 @@ PaperPilot sources enable core
 PaperPilot sources test core
 ```
 
+在交互模式里也可以直接输入 `/sources` 查看来源/API 状态表。
+
 配置会缓存到：
 
 ```text
@@ -101,6 +104,15 @@ PaperPilot sources test core
 
 ```bash
 PaperPilot
+```
+
+交互启动页会显示当前 LLM profile、模型 API 状态、免费来源覆盖、可选 API-key 来源配置情况和快捷命令：
+
+```text
+/model      管理 LLM 配置
+/sources    查看检索来源和 API 状态
+/help       重新显示启动说明
+exit        退出
 ```
 
 示例输入：

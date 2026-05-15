@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PaperPilot v1.2 Agent 流程图</title>
+  <title>PaperPilot v1.3 Agent 流程图</title>
   <style>
     :root {
       color-scheme: light;
@@ -568,10 +568,10 @@
   <main class="page">
     <header>
       <div>
-        <h1>PaperPilot v1.2 Agent 流程图</h1>
-        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.2 增加 AI/CS + 生医多来源检索、source diagnostics、optional-key source 配置和来源覆盖报告。</p>
+        <h1>PaperPilot v1.3 Agent 流程图</h1>
+        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.3 增加 Rich 彩色终端、启动页模型/来源状态、交互式 /sources 和更清晰的阶段进度输出。</p>
         <div class="version">
-          <span class="pill">v1.2 architecture</span>
+          <span class="pill">v1.3 architecture</span>
           <span class="pill">State-machine workflow</span>
           <span class="pill">Canonical bilingual report</span>
           <span class="pill">Citation-numbered reports</span>
@@ -606,7 +606,7 @@
       </div>
     </header>
 
-    <section class="flow-wrap" aria-label="PaperPilot v1.2 主流程">
+    <section class="flow-wrap" aria-label="PaperPilot v1.3 主流程">
       <div class="flow">
         <div class="stage">
           <div class="stage-title">Intake</div>
@@ -616,6 +616,8 @@
             <ul>
               <li>显示 active model</li>
               <li><code>/model</code> 管理模型</li>
+              <li><code>/sources</code> 查看来源/API 状态</li>
+              <li>Rich 面板确认解析后的研究需求</li>
               <li><code>state.json</code> 记录阶段</li>
               <li><code>events.jsonl</code> 记录事件流</li>
               <li><code>PaperPilot inspect</code> 查看任务</li>
@@ -1069,6 +1071,16 @@
             <td><code>--user-corpus &lt;path&gt;</code></td>
             <td>导入本地 PDF、BibTeX、RIS、Markdown 或文本语料</td>
             <td>可重复传入</td>
+          </tr>
+          <tr>
+            <td><code>/sources</code></td>
+            <td>在交互界面查看来源启用、API key 配置和 PDF/引用能力</td>
+            <td>只读状态表</td>
+          </tr>
+          <tr>
+            <td><code>--sources auto|all|core|biomed|cs|configured</code></td>
+            <td>选择检索来源 preset</td>
+            <td><code>auto</code></td>
           </tr>
           <tr>
             <td><code>PaperPilot inspect &lt;run&gt;</code></td>

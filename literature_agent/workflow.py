@@ -24,6 +24,7 @@ from .review_agents import run_review_agents
 from .searchers import search_all as _legacy_search_all
 from .searchers import search_all_with_diagnostics
 from .synthesis import build_literature_matrix, build_synthesis
+from .ui import console, print_success, stage_done, stage_start
 from .user_corpus import load_user_corpus
 from .utils import create_task_dir, write_json
 from .verification import build_quality_gate, verify_corpus, verification_to_dict
@@ -55,11 +56,12 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     write_json(output_dir / "prompt_manifest.json", prompt_manifest())
     write_json(output_dir / "registries.json", registry_manifest(app_config.sources))
     events.emit("start", "intake", "Run created", task_id=task_id, model=getattr(client, "model", None))
-    print(f"Task ID: {task_id}", flush=True)
-    print(f"Output directory: {output_dir.resolve()}", flush=True)
+    console.rule("[bold cyan]PaperPilot Run")
+    console.print(f"[bold]Task ID:[/bold] [cyan]{task_id}[/cyan]")
+    console.print(f"[bold]Output:[/bold] [cyan]{output_dir.resolve()}[/cyan]\n")
 
     mark_stage(output_dir, state, "intake", "running", events=events)
-    print(f"[1/9] Intake and query understanding: {args.keyword}", flush=True)
+    stage_start(1, 9, "Intake", f"Understanding query: {args.keyword}")
     understanding = understand_query(args.keyword, client)
     (output_dir / "query_understanding.md").write_text(understanding.to_markdown(), encoding="utf-8")
     if understanding.needs_confirmation and not args.auto_confirm and getattr(args, "interaction", "auto") != "auto":
@@ -69,17 +71,19 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
             print("Stopped before search. Review query_understanding.md and rerun with a more specific keyword.")
             return 2
     mark_stage(output_dir, state, "intake", "completed", events=events)
+    stage_done("Intake", {"query": understanding.recommended_query})
 
     mark_stage(output_dir, state, "protocol", "running", events=events)
-    print("[2/9] Creating protocol and search plan", flush=True)
+    stage_start(2, 9, "Protocol", "Creating search plan and research protocol")
     plan = make_plan(understanding, args.max_papers, args.since_year, client, seed_search_terms=getattr(args, "seed_search_terms", None))
     protocol = build_protocol(understanding, plan, args.github_filter, client)
     write_json(output_dir / "plan.json", plan.to_dict())
     write_json(output_dir / "protocol.json", protocol.to_dict())
     mark_stage(output_dir, state, "protocol", "completed", events=events)
+    stage_done("Protocol", {"queries": len(plan.search_queries), "sources": len(protocol.search_sources)})
 
     mark_stage(output_dir, state, "search", "running", events=events)
-    print("[3/9] Searching paper sources", flush=True)
+    stage_start(3, 9, "Search", "Querying source registry and optional user corpus")
     user_papers, user_corpus_log = load_user_corpus(getattr(args, "user_corpus", None))
     write_json(output_dir / "user_corpus_log.json", user_corpus_log)
     if user_papers:
@@ -108,21 +112,37 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         {"raw_count": len(raw_papers), "user_corpus": len(user_papers), "sources": source_diagnostics.get("enabled_sources", [])},
         events=events,
     )
+    stage_done(
+        "Search",
+        {
+            "sources": len(source_diagnostics.get("enabled_sources", [])),
+            "candidates": len(raw_papers),
+            "failures": count_source_failures(source_diagnostics),
+        },
+    )
 
     mark_stage(output_dir, state, "corpus", "running", events=events)
-    print("[4/9] Normalizing, deduplicating, and resolving code links", flush=True)
+    stage_start(4, 9, "Corpus", "Normalizing, deduplicating, ranking, and resolving code links")
     resolved = resolve_code_links(raw_papers)
     deduped, dedup_stats = enhanced_deduplicate(resolved)
     rank_papers(deduped, plan.recommended_query, args.since_year)
     github_enrichment = {"checked": 0, "enriched": 0, "skipped_existing_code": 0}
     if args.github_search_limit and args.github_filter in {"required", "any"}:
-        print("[4/9] Searching GitHub for missing code links", flush=True)
+        console.print("[dim]Searching GitHub for missing code links...[/dim]")
         github_enrichment = enrich_github_links(deduped, max_checks=args.github_search_limit)
         rank_papers(deduped, plan.recommended_query, args.since_year)
     mark_stage(output_dir, state, "corpus", "completed", {"dedup": dedup_stats, "github_enrichment": github_enrichment}, events=events)
+    stage_done(
+        "Corpus",
+        {
+            "raw": len(raw_papers),
+            "deduped": len(deduped),
+            "github+": github_enrichment.get("enriched", 0),
+        },
+    )
 
     mark_stage(output_dir, state, "screening", "running", events=events)
-    print("[5/9] Screening corpus relevance", flush=True)
+    stage_start(5, 9, "Screening", "Classifying papers as core, adjacent, or excluded")
     items = corpus_items_from_papers(deduped, plan, protocol, client)
     core_items, adjacent_items, excluded_items = split_corpus(items)
     final_core_items = final_view(core_items, args.github_filter, args.max_papers)
@@ -140,9 +160,13 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         {"core": len(core_items), "adjacent": len(adjacent_items), "excluded": len(excluded_items), "final": len(final_core_items)},
         events=events,
     )
+    stage_done(
+        "Screening",
+        {"core": len(core_items), "adjacent": len(adjacent_items), "excluded": len(excluded_items), "final": len(final_core_items)},
+    )
 
     mark_stage(output_dir, state, "verification", "running", events=events)
-    print("[6/9] Enriching and downloading open PDFs", flush=True)
+    stage_start(6, 9, "Verification", "Checking links and downloading open PDFs")
     final_papers = [item.paper for item in final_core_items]
     enrich_unpaywall(final_papers, args.unpaywall_email)
     if args.no_download:
@@ -156,18 +180,20 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     verification = verify_corpus(items, download_log)
     write_json(output_dir / "verification.json", verification_to_dict(verification))
     mark_stage(output_dir, state, "verification", "completed", events=events)
+    stage_done("Verification", download_status_counts(download_log))
 
     mark_stage(output_dir, state, "synthesis", "running", events=events)
-    print("[7/9] Building literature matrix and synthesis", flush=True)
+    stage_start(7, 9, "Synthesis", "Building literature matrix and field-level synthesis")
     matrix_items = core_items + (adjacent_items if args.include_adjacent else [])
     literature_matrix = build_literature_matrix(matrix_items)
     synthesis = build_synthesis(core_items, adjacent_items, literature_matrix, plan, protocol, client)
     write_json(output_dir / "literature_matrix.json", literature_matrix)
     write_json(output_dir / "synthesis.json", synthesis)
     mark_stage(output_dir, state, "synthesis", "completed", events=events)
+    stage_done("Synthesis", {"matrix_rows": len(literature_matrix), "method_families": len(synthesis.get("method_taxonomy") or [])})
 
     mark_stage(output_dir, state, "review", "running", events=events)
-    print("[8/9] Running quality gate and reflection", flush=True)
+    stage_start(8, 9, "Review", "Running quality gate, reflection, and review checks")
     quality_gate = build_quality_gate(
         items,
         final_core_items,
@@ -194,9 +220,10 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     write_json(output_dir / "quality_gate.json", quality_gate.to_dict())
     write_json(output_dir / "reflection.json", reflection)
     mark_stage(output_dir, state, "review", "completed", {"verdict": quality_gate.verdict}, events=events)
+    stage_done("Review", {"verdict": quality_gate.verdict, "issues": len(quality_gate.issues)})
 
     mark_stage(output_dir, state, "report", "running", events=events)
-    print("[9/9] Writing canonical, bilingual Markdown, HTML, and PDF reports", flush=True)
+    stage_start(9, 9, "Report", "Writing canonical, bilingual Markdown, HTML, and PDF reports")
     canonical = build_canonical_report(
         understanding,
         plan,
@@ -234,10 +261,30 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     write_pdf_report(zh, output_dir / "report.zh.pdf", title=canonical["title_zh"])
     write_pdf_report(en, output_dir / "report.en.pdf", title=canonical["title"])
     mark_stage(output_dir, state, "report", "completed", {"review_verdict": review_agent_findings["verdict"]}, events=events)
+    stage_done("Report", {"files": "report.zh/en.md/html/pdf", "review": review_agent_findings["verdict"]})
     write_manifest(output_dir, state, client)
     events.emit("done", "report", "Run completed", output_dir=str(output_dir.resolve()))
-    print(f"Done. Output: {output_dir.resolve()}")
+    print_success(f"Done. Output: {output_dir.resolve()}")
     return 0
+
+
+def count_source_failures(source_diagnostics: dict[str, Any]) -> int:
+    failures = 0
+    for info in (source_diagnostics.get("sources") or {}).values():
+        if info.get("status") == "error" or info.get("errors"):
+            failures += 1
+    return failures
+
+
+def download_status_counts(download_log: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"downloaded": 0, "skipped": 0, "failed": 0}
+    for item in download_log:
+        status = item.get("status") or "failed"
+        if status in counts:
+            counts[status] += 1
+        else:
+            counts["failed"] += 1
+    return counts
 
 
 def prepare_output_dir(args: argparse.Namespace) -> tuple[Path, str]:
@@ -310,7 +357,7 @@ def write_manifest(output_dir: Path, state: dict[str, Any], client) -> None:
     manifest = {
         "task_id": state["task_id"],
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "paperpilot_version": "1.2.2",
+        "paperpilot_version": "1.3.0",
         "model": getattr(client, "model", None),
         "files": files,
     }
