@@ -92,7 +92,7 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     if user_papers:
         events.emit("progress", "search", "Loaded user corpus", count=len(user_papers))
     min_report_papers = getattr(args, "min_report_papers", MIN_REPORT_PAPERS)
-    per_query_limit = candidate_limit(max(args.max_papers, min_report_papers), len(plan.search_queries), args.github_filter)
+    per_query_limit = candidate_limit(args.max_papers, len(plan.search_queries), args.github_filter)
     if search_all is not _legacy_search_all:
         searched_papers = search_all(plan, per_query_limit=per_query_limit)
         source_diagnostics = {"enabled_sources": ["test"], "total_returned": len(searched_papers), "sources": {}}
@@ -243,10 +243,9 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         write_json(output_dir / "shortfall.json", shortfall)
         mark_stage(output_dir, state, "report", "needs_user_attention", shortfall, events=events)
         write_manifest(output_dir, state, client)
-        events.emit("warn", "report", "Report not generated because fewer than minimum report papers were available", **shortfall)
+        events.emit("warn", "report", "Report not generated because no report papers were available", **shortfall)
         console.print(
-            f"[yellow]Report not generated: only {shortfall['final_report_count']} papers available; "
-            f"{shortfall['min_report_papers']} required. See shortfall.json.[/yellow]"
+            f"[yellow]Report not generated: no core or adjacent papers were available. See shortfall.json.[/yellow]"
         )
         return 2
 
@@ -414,8 +413,8 @@ def final_view(core_items, github_filter: str, max_papers: int):
 def candidate_limit(max_papers: int, query_count: int, github_filter: str) -> int:
     query_count = max(1, query_count)
     if github_filter == "required":
-        return max(18, min(60, (max(max_papers, MIN_REPORT_PAPERS) * 5) // query_count))
-    return max(15, min(50, (max(max_papers, MIN_REPORT_PAPERS) * 4) // query_count))
+        return max(18, min(80, (max(max_papers, 20) * 5) // query_count))
+    return max(15, min(70, (max(max_papers, 20) * 4) // query_count))
 
 
 def inspect_run(path_or_id: str) -> int:

@@ -51,7 +51,7 @@ PaperPilot 是一个面向 AI、生医与 AI for Science 场景的 **CLI 科研�
 - Canonical report model 驱动中英报告一致
 - 论文统一编号引用（[1][2][3]）并自动体现在参考文献中
 - Markdown / HTML / PDF 输出一致且可对齐
-- 正式报告默认至少 30 篇文献；不足时输出 shortfall 诊断而不是伪造完整报告
+- 最终报告默认最多 100 篇文献，不再强制最低 30 篇
 - 默认生成 Obsidian Wiki：论文页、方法页、主题页、claim 页和知识图谱入口
 
 ## 🗂 已集成来源
@@ -252,7 +252,7 @@ flowchart LR
 - `evidence_ledger.json`、`review_agent_findings.json`
 - `report.canonical.json`、`report.zh.md`、`report.en.md`
 - `report.zh.html`、`report.en.html`、`report.zh.pdf`、`report.en.pdf`
-- `report_selection.json`，以及语料不足时的 `shortfall.json`
+- `report_selection.json`，以及没有可报告论文时的 `shortfall.json`
 - `obsidian_wiki/`：Obsidian 知识图谱目录
 - `pdfs/`、`source_diagnostics.json`、`registries.json`、`prompt_manifest.json`
 
@@ -266,7 +266,7 @@ runs/<task-id>/obsidian_wiki/
 
 这个目录可以直接作为 Obsidian vault 打开，核心结构包括：
 
-- `index.md`：本次调研入口、研究问题和 30 篇文献总览
+- `index.md`：本次调研入口、研究问题和报告论文总览
 - `papers/`：一篇论文一个 note，包含引用编号、PDF/代码链接、方法流派和证据基础
 - `methods/`：主流方法流派页，链接代表论文
 - `topics/`：关键词、子方向和检索主题页
@@ -290,8 +290,8 @@ PaperPilot "retrieval augmented generation" --auto-confirm --github-filter requi
 ## 🧪 常用参数
 
 ```text
---max-papers INT                 最终报告视图论文数量上限，必须 >= 30
---min-report-papers INT          正式报告最低论文数量，默认/最低 30
+--max-papers INT                 最终报告视图论文数量上限，默认 100
+--min-report-papers INT          可选的正式报告最低论文数量，默认 0
 --since-year INT                 起始年份
 --github-filter any|required|none
 --github-search-limit INT        GitHub 搜索数量上限

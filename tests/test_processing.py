@@ -675,9 +675,9 @@ Paragraph.
         zh = build_parser("zh").format_help()
         en = build_parser("en").format_help()
 
-        self.assertIn("AI 文献检索 Agent", zh)
+        self.assertIn("文献检索 Agent", zh)
         self.assertIn("最终保留论文数量", zh)
-        self.assertIn("AI literature search agent", en)
+        self.assertIn("literature search agent", en)
         self.assertIn("Maximum ranked papers", en)
 
     def test_cli_version_prints_package_version(self):
@@ -690,13 +690,13 @@ Paragraph.
         self.assertEqual(code, 0)
         self.assertIn(literature_agent.__version__, buffer.getvalue())
 
-    def test_cli_rejects_report_size_below_minimum(self):
+    def test_cli_rejects_non_positive_report_size(self):
         with contextlib.redirect_stdout(io.StringIO()):
-            code = cli_main(["RNA inverse folding", "--max-papers", "29"])
+            code = cli_main(["RNA inverse folding", "--max-papers", "0"])
 
         self.assertEqual(code, 2)
 
-    def test_report_selection_fills_to_thirty_with_adjacent_items(self):
+    def test_report_selection_defaults_to_available_items_without_minimum(self):
         core = [
             CorpusItem(
                 citation_key=f"core{i}",
@@ -714,15 +714,15 @@ Paragraph.
             for i in range(25)
         ]
 
-        selection = select_report_items(core, adjacent, "required", max_papers=50, min_report_papers=30)
+        selection = select_report_items(core, adjacent, "required", max_papers=12, min_report_papers=0)
 
         self.assertIsNone(selection.shortfall)
-        self.assertEqual(len(selection.items), 35)
-        self.assertGreaterEqual(selection.stats["final_report_count"], 30)
+        self.assertEqual(len(selection.items), 12)
+        self.assertEqual(selection.stats["final_report_count"], 12)
         self.assertEqual(selection.stats["core_report_count"], 10)
-        self.assertGreaterEqual(selection.stats["adjacent_fill_count"], 20)
+        self.assertEqual(selection.stats["adjacent_fill_count"], 0)
 
-    def test_report_selection_shortfall_when_screened_corpus_is_too_small(self):
+    def test_report_selection_shortfall_only_when_empty_by_default(self):
         core = [
             CorpusItem(
                 citation_key=f"core{i}",
@@ -732,10 +732,14 @@ Paragraph.
             for i in range(5)
         ]
 
-        selection = select_report_items(core, [], "required", max_papers=50, min_report_papers=30)
+        selection = select_report_items(core, [], "required", max_papers=50, min_report_papers=0)
 
-        self.assertIsNotNone(selection.shortfall)
-        self.assertEqual(selection.shortfall["missing_count"], 25)
+        self.assertIsNone(selection.shortfall)
+        self.assertEqual(len(selection.items), 5)
+
+        empty = select_report_items([], [], "any", max_papers=50, min_report_papers=0)
+        self.assertIsNotNone(empty.shortfall)
+        self.assertEqual(empty.shortfall["reason"], "No core or adjacent papers were available after screening.")
 
     def test_chat_completion_uses_reasoning_content_when_content_empty(self):
         client = OpenAIClient(api_key="sk-test", model="deepseek-test", base_url="https://api.deepseek.com")
@@ -1035,7 +1039,7 @@ Paragraph.
                 args = argparse.Namespace(
                     keyword="RNA inverse folding sequence design",
                     max_papers=50,
-                    min_report_papers=30,
+                    min_report_papers=0,
                     since_year=2021,
                     output_dir=Path(tmp) / "run",
                     github_filter="required",
@@ -1073,7 +1077,7 @@ Paragraph.
                 self.assertTrue((args.output_dir / "report.en.html").exists())
                 self.assertTrue((args.output_dir / "obsidian_wiki" / "index.md").exists())
                 self.assertTrue((args.output_dir / "obsidian_wiki" / "_meta" / "manifest.json").exists())
-                self.assertGreaterEqual(len(list((args.output_dir / "obsidian_wiki" / "papers").glob("*.md"))), 30)
+                self.assertGreaterEqual(len(list((args.output_dir / "obsidian_wiki" / "papers").glob("*.md"))), 35)
                 html = (args.output_dir / "report.zh.html").read_text(encoding="utf-8")
                 self.assertIn("研究背景与问题定义", html)
                 self.assertIn("代表论文总结", html)
@@ -1088,13 +1092,13 @@ Paragraph.
                 labels = {item["paper"]["title"]: item["inclusion"]["label"] for item in corpus}
                 self.assertEqual(labels["AutoDock Vina 1.2.0: New Docking Methods, Expanded Force Field, and Python Bindings"], "exclude")
                 ranked = json.loads((args.output_dir / "ranked_papers.json").read_text(encoding="utf-8"))
-                self.assertGreaterEqual(len(ranked), 30)
+                self.assertGreaterEqual(len(ranked), 35)
                 lint = json.loads((args.output_dir / "obsidian_wiki" / "_meta" / "wiki_lint.json").read_text(encoding="utf-8"))
                 self.assertEqual(lint["broken_wikilink_count"], 0)
         finally:
             workflow_module.search_all = original_search_all
 
-    def test_v1_workflow_shortfall_does_not_write_formal_report(self):
+    def test_v1_workflow_explicit_minimum_shortfall_does_not_write_formal_report(self):
         class FakeClient:
             available = False
             model = "fake"

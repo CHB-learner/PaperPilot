@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.3] - 2026-05-15
+
+### Changed
+- Removed the default 30-paper minimum gate for formal reports.
+- Changed the default final report cap to 100 papers.
+- Kept `--min-report-papers` as an optional user-controlled minimum; default is now `0`.
+- Updated README, Chinese README, project homepage, quality gate, and report wording for the new report-size policy.
+
 ## [1.5.2] - 2026-05-15
 
 ### Changed

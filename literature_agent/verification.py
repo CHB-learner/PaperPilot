@@ -126,14 +126,17 @@ def build_quality_gate(
     if github_filter == "required" and len(final_items) < min(5, max_papers):
         issues.append("github_filter_too_strict")
         recommendations.append("Use github_filter=any for a fuller scholarly corpus, then inspect code table separately.")
-    if len(final_items) < min_report_papers:
+    if min_report_papers > 0 and len(final_items) < min_report_papers:
         issues.append("final_report_below_minimum")
-        recommendations.append(f"Broaden the query or add a local corpus; PaperPilot requires at least {min_report_papers} report papers.")
+        recommendations.append(f"Broaden the query or add a local corpus; the requested minimum is {min_report_papers} report papers.")
+    if not final_items:
+        issues.append("no_report_papers")
+        recommendations.append("Broaden the query, relax code filtering, or add a local corpus.")
     if warning_count > max(3, len(core) // 3):
         issues.append("many_verification_warnings")
         recommendations.append("Review DOI, URL, and code confidence warnings before citing.")
 
-    if "final_report_below_minimum" in issues:
+    if "no_report_papers" in issues or "final_report_below_minimum" in issues:
         verdict = "needs_user_attention"
     elif "too_few_core_papers" in issues or "github_filter_too_strict" in issues:
         verdict = "retry"

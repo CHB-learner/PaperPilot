@@ -569,12 +569,12 @@
     <header>
       <div>
         <h1>PaperPilot v1.5 Agent 流程图</h1>
-        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门、中英文 APA 风格报告和 Obsidian Wiki。v1.5 默认要求正式报告至少 30 篇文献，支持 Papers.cool、DeepXiv / Agentic Data、Rich 彩色终端、/doctor 自检和可追踪 Wiki 输出。</p>
+        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门、中英文 APA 风格报告和 Obsidian Wiki。v1.5 默认最多纳入 100 篇文献，不再强制最低 30 篇，并支持 Papers.cool、DeepXiv / Agentic Data、Rich 彩色终端、/doctor 自检和可追踪 Wiki 输出。</p>
         <div class="version">
           <span class="pill">v1.5 architecture</span>
           <span class="pill">State-machine workflow</span>
           <span class="pill">Canonical bilingual report</span>
-          <span class="pill">30-paper minimum</span>
+          <span class="pill">100-paper default cap</span>
           <span class="pill">Obsidian Wiki</span>
           <span class="pill">Citation-numbered reports</span>
           <span class="pill">Prompt / Tool / Capability registry</span>
@@ -951,7 +951,7 @@
         <ul>
           <li>gRNAde 这类预印本/发表版通过标题相似度合并。</li>
           <li>AutoDock Vina、RNA-SeQC、ProLIF、RTM-align 等偏题工具进入 <code>exclude</code>。</li>
-          <li>正式报告默认至少 30 篇；不足时写入 <code>shortfall.json</code>，不伪造完整报告。</li>
+          <li>正式报告默认最多 100 篇，不再强制最低篇数；只有没有可报告论文时写入 <code>shortfall.json</code>。</li>
           <li><code>quality_gate.json</code> 输出 <code>pass</code>、<code>retry</code> 或 <code>needs_user_attention</code>。</li>
         </ul>
       </article>

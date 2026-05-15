@@ -49,7 +49,7 @@ def build_parser(language: str = "bilingual") -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("keyword", nargs="?", help=text["keyword"])
-    parser.add_argument("--max-papers", type=int, default=50, help=text["max_papers"])
+    parser.add_argument("--max-papers", type=int, default=100, help=text["max_papers"])
     parser.add_argument("--min-report-papers", type=int, default=MIN_REPORT_PAPERS, help=text["min_report_papers"])
     parser.add_argument("--since-year", type=int, default=2021, help=text["since_year"])
     parser.add_argument(
@@ -160,7 +160,7 @@ def build_parser(language: str = "bilingual") -> argparse.ArgumentParser:
 def parser_text(language: str) -> dict[str, str]:
     if language == "zh":
         return {
-            "description": "AI 文献检索 Agent",
+            "description": "科研文献检索 Agent",
             "epilog": """
 示例:
   PaperPilot
@@ -202,8 +202,8 @@ def parser_text(language: str) -> dict[str, str]:
   review_agent_findings.json  复核 Agent 检查结果
 """,
             "keyword": "研究关键词或主题，例如 RNA",
-            "max_papers": "最终保留论文数量上限，必须 >= 30，默认 50",
-            "min_report_papers": "正式报告最低论文数量，最低 30，默认 30",
+            "max_papers": "最终保留论文数量上限，默认 100",
+            "min_report_papers": "正式报告最低论文数量，默认 0（不强制最低篇数）",
             "since_year": "优先检索该年份之后的论文，默认 2021",
             "output_dir": "输出目录；默认自动生成 runs/<task-id>",
             "openai_model": "OpenAI 或兼容服务的模型名，默认 gpt-5.2",
@@ -227,7 +227,7 @@ def parser_text(language: str) -> dict[str, str]:
         }
     if language == "en":
         return {
-            "description": "AI literature search agent",
+            "description": "Scholarly literature search agent",
             "epilog": """
 Examples:
   PaperPilot
@@ -269,8 +269,8 @@ Outputs:
   review_agent_findings.json  Review-agent findings
 """,
             "keyword": "Research keyword or topic, e.g. RNA",
-            "max_papers": "Maximum ranked papers to keep; must be >= 30, default: 50",
-            "min_report_papers": "Minimum papers required in the formal report; minimum/default: 30",
+            "max_papers": "Maximum ranked papers to keep; default: 100",
+            "min_report_papers": "Minimum papers required in the formal report; default: 0 (no minimum)",
             "since_year": "Prefer papers since this year, default: 2021",
             "output_dir": "Output directory; default: auto-generated runs/<task-id>",
             "openai_model": "OpenAI or compatible model name, default: gpt-5.2",
@@ -293,7 +293,7 @@ Outputs:
             "no_obsidian_wiki": "Do not generate obsidian_wiki/ knowledge graph output",
         }
     return {
-        "description": "AI 文献检索 Agent / AI literature search agent",
+        "description": "科研文献检索 Agent / Scholarly literature search agent",
         "epilog": """
 示例 / Examples:
   PaperPilot
@@ -336,8 +336,8 @@ Outputs:
   review_agent_findings.json  复核 Agent 检查结果 / review-agent findings
 """,
         "keyword": "研究关键词或主题，例如 RNA / Research keyword or topic, e.g. RNA",
-        "max_papers": "最终保留论文数量上限，必须 >= 30，默认 50 / Maximum ranked papers to keep; must be >= 30, default: 50",
-        "min_report_papers": "正式报告最低论文数量，最低/默认 30 / Minimum formal report papers, minimum/default: 30",
+        "max_papers": "最终保留论文数量上限，默认 100 / Maximum ranked papers to keep, default: 100",
+        "min_report_papers": "正式报告最低论文数量，默认 0 不强制 / Minimum formal report papers, default: 0",
         "since_year": "优先检索该年份之后的论文，默认 2021 / Prefer papers since this year, default: 2021",
         "output_dir": "输出目录；默认自动生成 runs/<task-id> / Output directory; default: auto-generated runs/<task-id>",
         "openai_model": "OpenAI 模型名，默认 gpt-5.2 / OpenAI model name, default: gpt-5.2",
@@ -719,8 +719,8 @@ def active_model_label() -> str:
 def candidate_limit(max_papers: int, query_count: int, github_filter: str) -> int:
     query_count = max(1, query_count)
     if github_filter == "required":
-        return max(18, min(60, (max(max_papers, MIN_REPORT_PAPERS) * 5) // query_count))
-    return max(15, min(50, (max(max_papers, MIN_REPORT_PAPERS) * 4) // query_count))
+        return max(18, min(80, (max(max_papers, 20) * 5) // query_count))
+    return max(15, min(70, (max(max_papers, 20) * 4) // query_count))
 
 
 if __name__ == "__main__":

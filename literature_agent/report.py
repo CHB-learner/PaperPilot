@@ -87,7 +87,7 @@ def build_canonical_report(
             "reported": len(report_items),
         },
         "minimum_report_policy": {
-            "min_report_papers": quality_gate.metrics.get("min_report_papers", 30),
+            "min_report_papers": quality_gate.metrics.get("min_report_papers", 0),
             "final_report_count": quality_gate.metrics.get("final_report_count", len(report_items)),
             "core_report_count": quality_gate.metrics.get("core_report_count", len(report_items)),
             "adjacent_report_count": quality_gate.metrics.get("adjacent_report_count", 0),
@@ -760,13 +760,14 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 
 检索来源：{{ report.protocol.search_sources | join(", ") }}。开放 PDF 只在明确可访问时下载，不绕过付费墙。
 
-### 30 篇最低报告策略
+### 报告论文数量策略
 
-本报告要求正式论文列表不少于 {{ report.minimum_report_policy.min_report_papers }} 篇。选择顺序为：优先核心论文；若代码筛选导致数量不足，则保留高相关核心论文并标记为 `code_filter_fallback`；若核心语料仍不足，则使用相关但非核心论文补齐，并标记为 `adjacent_fill` 或 `minimum_fill`。
+本报告默认不强制最低论文篇数，按相关性优先纳入核心论文，并在不超过用户设置上限的前提下补充相关但非核心论文。若用户显式设置 `--min-report-papers`，系统会尝试用相关论文补齐并标注补齐来源。
 
 | 指标 | 数量 |
 |---|---:|
 | 进入报告总数 | {{ report.minimum_report_policy.final_report_count }} |
+| 用户设置最低篇数 | {{ report.minimum_report_policy.min_report_papers }} |
 | 核心论文 | {{ report.minimum_report_policy.core_report_count }} |
 | 相关补齐论文 | {{ report.minimum_report_policy.adjacent_report_count }} |
 | 代码筛选 fallback | {{ report.minimum_report_policy.code_filter_fallback_count }} |
@@ -992,13 +993,14 @@ Research question: {{ report.protocol.research_question }}
 
 Sources searched: {{ report.protocol.search_sources | join(", ") }}. Open PDFs were downloaded only when clearly available; no paywall bypassing was attempted.
 
-### 30-Paper Minimum Policy
+### Report Size Policy
 
-The formal report list requires at least {{ report.minimum_report_policy.min_report_papers }} papers. Selection is core-first; if code filtering leaves too few papers, highly relevant core papers are retained as `code_filter_fallback`; if core coverage is still insufficient, adjacent papers are used as `adjacent_fill` or `minimum_fill`.
+By default, the formal report does not enforce a minimum paper count. PaperPilot selects core papers first and then includes adjacent papers up to the user-configured maximum. If `--min-report-papers` is explicitly set, related papers may be used to satisfy that requested minimum and are labeled accordingly.
 
 | Metric | Count |
 |---|---:|
 | Reported papers | {{ report.minimum_report_policy.final_report_count }} |
+| User minimum | {{ report.minimum_report_policy.min_report_papers }} |
 | Core report papers | {{ report.minimum_report_policy.core_report_count }} |
 | Adjacent fill papers | {{ report.minimum_report_policy.adjacent_report_count }} |
 | Code-filter fallback | {{ report.minimum_report_policy.code_filter_fallback_count }} |
