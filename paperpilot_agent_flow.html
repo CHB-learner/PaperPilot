@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PaperPilot v1.3 Agent 流程图</title>
+  <title>PaperPilot v1.5 Agent 流程图</title>
   <style>
     :root {
       color-scheme: light;
@@ -568,12 +568,14 @@
   <main class="page">
     <header>
       <div>
-        <h1>PaperPilot v1.3 Agent 流程图</h1>
-        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.4 增加 DeepXiv / Agentic Data 检索来源，并保留 Rich 彩色终端、启动页模型/来源状态、交互式 /sources 和阶段进度输出。</p>
+        <h1>PaperPilot v1.5 Agent 流程图</h1>
+        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门、中英文 APA 风格报告和 Obsidian Wiki。v1.5 默认要求正式报告至少 30 篇文献，支持 Papers.cool、DeepXiv / Agentic Data、Rich 彩色终端、/doctor 自检和可追踪 Wiki 输出。</p>
         <div class="version">
-          <span class="pill">v1.3 architecture</span>
+          <span class="pill">v1.5 architecture</span>
           <span class="pill">State-machine workflow</span>
           <span class="pill">Canonical bilingual report</span>
+          <span class="pill">30-paper minimum</span>
+          <span class="pill">Obsidian Wiki</span>
           <span class="pill">Citation-numbered reports</span>
           <span class="pill">Prompt / Tool / Capability registry</span>
         </div>
@@ -587,12 +589,12 @@
             <span>versioned prompts</span>
           </div>
           <div class="metric">
-            <strong>17</strong>
+            <strong>19</strong>
             <span>paper sources</span>
           </div>
           <div class="metric">
-            <strong>6</strong>
-            <span>report outputs</span>
+            <strong>7</strong>
+            <span>report + wiki outputs</span>
           </div>
         </div>
       </div>
@@ -606,7 +608,7 @@
       </div>
     </header>
 
-    <section class="flow-wrap" aria-label="PaperPilot v1.3 主流程">
+    <section class="flow-wrap" aria-label="PaperPilot v1.5 主流程">
       <div class="flow">
         <div class="stage">
           <div class="stage-title">Intake</div>
@@ -662,7 +664,7 @@
             <ul>
               <li>arXiv / Semantic Scholar / OpenAlex</li>
               <li>Crossref / OpenReview / DBLP / ACL</li>
-              <li>PubMed / Europe PMC / bioRxiv / medRxiv</li>
+              <li>PubMed / Europe PMC / bioRxiv / medRxiv / Papers.cool</li>
               <li>DeepXiv / CORE / Lens / IEEE / Springer / Elsevier / Dimensions</li>
               <li><code>source_diagnostics.json</code></li>
               <li><code>registries.json</code></li>
@@ -904,10 +906,11 @@
           <div class="flow-stack-title">Output</div>
           <article class="flow-card quality">
             <h3>Report Renderer</h3>
-            <p>从 canonical 渲染中文、英文、HTML 和 PDF。</p>
+            <p>从 canonical 渲染中文、英文、HTML、PDF，并同步输出 Obsidian Wiki。</p>
             <ul>
               <li><code>report.zh.md/html/pdf</code></li>
               <li><code>report.en.md/html/pdf</code></li>
+              <li><code>obsidian_wiki/</code></li>
             </ul>
           </article>
           <article class="flow-card data">
@@ -930,13 +933,14 @@
 
     <section class="layers" aria-label="关键架构层">
       <article class="panel">
-        <h2>v1.2 状态机与事件流</h2>
-        <p>PaperPilot 现在不是简单 8 步脚本，而是保存阶段状态的研究工作流。每个 run folder 都有状态、清单和可审计中间产物。</p>
+        <h2>v1.5 状态机与事件流</h2>
+        <p>PaperPilot 不是简单线性脚本，而是保存阶段状态的研究工作流。每个 run folder 都有状态、清单、Wiki 和可审计中间产物。</p>
         <div class="code">Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis -> Review -> Report</div>
         <ul>
           <li><code>state.json</code> 记录每个阶段的完成情况。</li>
           <li><code>events.jsonl</code> 记录 start、progress、stage、done 等事件。</li>
           <li><code>manifest.json</code> 记录最终产物清单和模型信息。</li>
+          <li><code>obsidian_wiki/</code> 输出论文、方法、主题和 claim note。</li>
           <li><code>PaperPilot inspect &lt;task-id&gt;</code> 可查看质量门、证据账本和复核结果。</li>
         </ul>
       </article>
@@ -947,6 +951,7 @@
         <ul>
           <li>gRNAde 这类预印本/发表版通过标题相似度合并。</li>
           <li>AutoDock Vina、RNA-SeQC、ProLIF、RTM-align 等偏题工具进入 <code>exclude</code>。</li>
+          <li>正式报告默认至少 30 篇；不足时写入 <code>shortfall.json</code>，不伪造完整报告。</li>
           <li><code>quality_gate.json</code> 输出 <code>pass</code>、<code>retry</code> 或 <code>needs_user_attention</code>。</li>
         </ul>
       </article>
@@ -980,7 +985,7 @@
         <div class="code">prompt_manifest.json + registries.json + events.jsonl</div>
         <ul>
           <li>Prompt Registry 管理 QueryUnderstanding、Planner、Protocol、Screening、Synthesis、Reflection、Abstract。</li>
-          <li>Source Registry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology、DeepXiv / Agentic Data 以及 optional-key sources。</li>
+          <li>Source Registry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology、Papers.cool、DeepXiv / Agentic Data 以及 optional-key sources。</li>
           <li>ToolRegistry 记录 GitHub、PDF、fulltext、report renderer 等非搜索工具。</li>
           <li>CapabilityRegistry 预留 literature_review、systematic_review、code_reproducibility_review 和 topic_monitoring。</li>
         </ul>
