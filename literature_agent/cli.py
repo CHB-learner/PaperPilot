@@ -7,6 +7,7 @@ import os
 import sys
 from pathlib import Path
 
+from . import __version__
 from .config import (
     config_delete,
     config_import,
@@ -326,6 +327,9 @@ def main(argv: list[str] | None = None) -> int:
         return run_config_command(argv[1:])
     if argv and argv[0] == "sources":
         return run_sources_command(argv[1:])
+    if any(arg in {"--version", "-V"} for arg in argv):
+        print(f"paperpilot {__version__}")
+        return 0
     if argv and argv[0] == "inspect":
         if len(argv) < 2:
             print("Usage: PaperPilot inspect <task-id-or-run-dir>")

@@ -18,6 +18,7 @@ from literature_agent.config import (
     save_user_config,
 )
 from literature_agent.cli import build_parser
+from literature_agent.cli import main as cli_main
 from literature_agent.corpus import corpus_items_from_papers, enhanced_deduplicate, split_corpus
 from literature_agent.intent import parse_research_intent, parse_research_intent_with_llm
 from literature_agent.models import Paper
@@ -340,6 +341,16 @@ class ProcessingTests(unittest.TestCase):
         self.assertIn("最终保留论文数量", zh)
         self.assertIn("AI literature search agent", en)
         self.assertIn("Maximum ranked papers", en)
+
+    def test_cli_version_prints_package_version(self):
+        import literature_agent
+
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            code = cli_main(["--version"])
+
+        self.assertEqual(code, 0)
+        self.assertIn(literature_agent.__version__, buffer.getvalue())
 
     def test_chat_completion_uses_reasoning_content_when_content_empty(self):
         client = OpenAIClient(api_key="sk-test", model="deepseek-test", base_url="https://api.deepseek.com")
