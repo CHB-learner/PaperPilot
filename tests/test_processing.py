@@ -28,7 +28,7 @@ from literature_agent.cli import build_parser
 from literature_agent.cli import main as cli_main
 from literature_agent.corpus import corpus_items_from_papers, enhanced_deduplicate, split_corpus
 from literature_agent.intent import ParsedIntent, parse_research_intent, parse_research_intent_with_llm
-from literature_agent.models import Paper
+from literature_agent.models import CorpusItem, InclusionDecision, Paper
 from literature_agent.openai_client import OpenAIClient
 from literature_agent.pdf_report import write_pdf_report
 from literature_agent.planner import make_plan
@@ -36,6 +36,7 @@ from literature_agent.protocol import build_protocol
 from literature_agent.processing import apply_github_filter, deduplicate, resolve_code_links
 from literature_agent.query import heuristic_understanding
 from literature_agent.report import build_canonical_report, markdown_report_to_html, render_html_reports, render_reports
+from literature_agent.report_policy import select_report_items
 from literature_agent.searchers import search_dblp, search_deepxiv, search_europe_pmc, search_pubmed
 from literature_agent.sources import SourceConfig, resolve_enabled_sources
 from literature_agent.synthesis import build_literature_matrix, build_synthesis
@@ -689,6 +690,53 @@ Paragraph.
         self.assertEqual(code, 0)
         self.assertIn(literature_agent.__version__, buffer.getvalue())
 
+    def test_cli_rejects_report_size_below_minimum(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = cli_main(["RNA inverse folding", "--max-papers", "29"])
+
+        self.assertEqual(code, 2)
+
+    def test_report_selection_fills_to_thirty_with_adjacent_items(self):
+        core = [
+            CorpusItem(
+                citation_key=f"core{i}",
+                paper=Paper(title=f"Core RNA inverse folding paper {i}", has_code=True),
+                inclusion=InclusionDecision(label="core", score=0.9, reason="core"),
+            )
+            for i in range(10)
+        ]
+        adjacent = [
+            CorpusItem(
+                citation_key=f"adj{i}",
+                paper=Paper(title=f"Adjacent RNA design paper {i}", has_code=True),
+                inclusion=InclusionDecision(label="adjacent", score=0.5, reason="adjacent"),
+            )
+            for i in range(25)
+        ]
+
+        selection = select_report_items(core, adjacent, "required", max_papers=50, min_report_papers=30)
+
+        self.assertIsNone(selection.shortfall)
+        self.assertEqual(len(selection.items), 35)
+        self.assertGreaterEqual(selection.stats["final_report_count"], 30)
+        self.assertEqual(selection.stats["core_report_count"], 10)
+        self.assertGreaterEqual(selection.stats["adjacent_fill_count"], 20)
+
+    def test_report_selection_shortfall_when_screened_corpus_is_too_small(self):
+        core = [
+            CorpusItem(
+                citation_key=f"core{i}",
+                paper=Paper(title=f"Core RNA inverse folding paper {i}", has_code=True),
+                inclusion=InclusionDecision(label="core", score=0.9, reason="core"),
+            )
+            for i in range(5)
+        ]
+
+        selection = select_report_items(core, [], "required", max_papers=50, min_report_papers=30)
+
+        self.assertIsNotNone(selection.shortfall)
+        self.assertEqual(selection.shortfall["missing_count"], 25)
+
     def test_chat_completion_uses_reasoning_content_when_content_empty(self):
         client = OpenAIClient(api_key="sk-test", model="deepseek-test", base_url="https://api.deepseek.com")
         import literature_agent.openai_client as module
@@ -878,20 +926,60 @@ Paragraph.
             model = "fake"
 
         original_search_all = workflow_module.search_all
+        unique_terms = [
+            "Diffusion atlas",
+            "Graph geometry",
+            "Transformer scaffold",
+            "Evolutionary search",
+            "Benchmark protocol",
+            "Energy landscape",
+            "Tertiary motif",
+            "Secondary constraint",
+            "Foundation model",
+            "Reward optimizer",
+            "Designability suite",
+            "Backbone encoder",
+            "Latent sampler",
+            "Hybrid folding",
+            "Constraint solver",
+            "Sequence generator",
+            "Structure compiler",
+            "Pairing grammar",
+            "Neural heuristic",
+            "Open benchmark",
+            "Motif recovery",
+            "Loop designer",
+            "Helix planner",
+            "Long range contact",
+            "Probabilistic decoder",
+            "Energy guided sampler",
+            "RNA language prior",
+            "Sparse graph model",
+            "Thermodynamic verifier",
+            "Generative evaluator",
+            "Comparative study",
+            "Inverse design toolkit",
+            "Sequence recovery model",
+            "Open source baseline",
+            "Multi objective design",
+        ]
         try:
             workflow_module.search_all = lambda plan, per_query_limit=10: [
-                Paper(
-                    title="RIDER: 3D RNA Inverse Design with Reinforcement Learning-Guided Diffusion",
-                    authors=["Tao Hu"],
-                    year=2026,
-                    venue="arXiv",
-                    abstract="RNA inverse design with diffusion and reinforcement learning.",
-                    github_url="https://github.com/COLA-Laboratory/RIDER",
-                    has_code=True,
-                    pdf_url="https://arxiv.org/pdf/example",
-                    source="arxiv",
-                    sources=["arxiv"],
-                ),
+                *[
+                    Paper(
+                        title=f"{unique_terms[idx]} for RNA inverse folding sequence design",
+                        authors=[f"Author {idx}"],
+                        year=2021 + (idx % 6),
+                        venue="arXiv",
+                        abstract="RNA inverse folding sequence design with benchmark evaluation and computational RNA design.",
+                        github_url=f"https://github.com/example/rna-design-{idx}",
+                        has_code=True,
+                        pdf_url=f"https://arxiv.org/pdf/example{idx}",
+                        source="arxiv",
+                        sources=["arxiv"],
+                    )
+                    for idx in range(35)
+                ],
                 Paper(
                     title="AutoDock Vina 1.2.0: New Docking Methods, Expanded Force Field, and Python Bindings",
                     authors=["J. Eberhardt"],
@@ -906,7 +994,8 @@ Paragraph.
             with TemporaryDirectory() as tmp:
                 args = argparse.Namespace(
                     keyword="RNA inverse folding sequence design",
-                    max_papers=10,
+                    max_papers=50,
+                    min_report_papers=30,
                     since_year=2021,
                     output_dir=Path(tmp) / "run",
                     github_filter="required",
@@ -921,6 +1010,7 @@ Paragraph.
                     quality="fast",
                     include_adjacent=False,
                     user_corpus=[],
+                    no_obsidian_wiki=False,
                 )
 
                 with contextlib.redirect_stdout(io.StringIO()):
@@ -941,6 +1031,9 @@ Paragraph.
                 self.assertTrue((args.output_dir / "report.canonical.json").exists())
                 self.assertTrue((args.output_dir / "report.zh.html").exists())
                 self.assertTrue((args.output_dir / "report.en.html").exists())
+                self.assertTrue((args.output_dir / "obsidian_wiki" / "index.md").exists())
+                self.assertTrue((args.output_dir / "obsidian_wiki" / "_meta" / "manifest.json").exists())
+                self.assertGreaterEqual(len(list((args.output_dir / "obsidian_wiki" / "papers").glob("*.md"))), 30)
                 html = (args.output_dir / "report.zh.html").read_text(encoding="utf-8")
                 self.assertIn("研究背景与问题定义", html)
                 self.assertIn("代表论文总结", html)
@@ -954,6 +1047,62 @@ Paragraph.
                 corpus = json.loads((args.output_dir / "corpus.json").read_text(encoding="utf-8"))
                 labels = {item["paper"]["title"]: item["inclusion"]["label"] for item in corpus}
                 self.assertEqual(labels["AutoDock Vina 1.2.0: New Docking Methods, Expanded Force Field, and Python Bindings"], "exclude")
+                ranked = json.loads((args.output_dir / "ranked_papers.json").read_text(encoding="utf-8"))
+                self.assertGreaterEqual(len(ranked), 30)
+                lint = json.loads((args.output_dir / "obsidian_wiki" / "_meta" / "wiki_lint.json").read_text(encoding="utf-8"))
+                self.assertEqual(lint["broken_wikilink_count"], 0)
+        finally:
+            workflow_module.search_all = original_search_all
+
+    def test_v1_workflow_shortfall_does_not_write_formal_report(self):
+        class FakeClient:
+            available = False
+            model = "fake"
+
+        original_search_all = workflow_module.search_all
+        try:
+            workflow_module.search_all = lambda plan, per_query_limit=10: [
+                Paper(
+                    title=f"RNA inverse folding sequence design short corpus {idx}",
+                    authors=[f"Author {idx}"],
+                    year=2024,
+                    abstract="RNA inverse folding sequence design with benchmark evaluation.",
+                    github_url=f"https://github.com/example/short-{idx}",
+                    has_code=True,
+                    source="arxiv",
+                    sources=["arxiv"],
+                )
+                for idx in range(5)
+            ]
+            with TemporaryDirectory() as tmp:
+                args = argparse.Namespace(
+                    keyword="RNA inverse folding sequence design",
+                    max_papers=50,
+                    min_report_papers=30,
+                    since_year=2021,
+                    output_dir=Path(tmp) / "run",
+                    github_filter="required",
+                    auto_confirm=True,
+                    no_download=True,
+                    pdf_limit=None,
+                    github_search_limit=0,
+                    seed_search_terms=["RNA inverse folding"],
+                    unpaywall_email=None,
+                    mode="apa",
+                    interaction="auto",
+                    quality="fast",
+                    include_adjacent=False,
+                    user_corpus=[],
+                    no_obsidian_wiki=True,
+                )
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    code = workflow_module.run_v1_workflow(args, FakeClient())
+
+                self.assertEqual(code, 2)
+                self.assertTrue((args.output_dir / "shortfall.json").exists())
+                self.assertFalse((args.output_dir / "report.canonical.json").exists())
+                self.assertFalse((args.output_dir / "obsidian_wiki").exists())
         finally:
             workflow_module.search_all = original_search_all
 

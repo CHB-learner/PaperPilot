@@ -5,6 +5,7 @@ from collections import Counter
 from typing import Any
 
 from .models import CorpusItem, QualityGate, VerificationRecord
+from .report_policy import MIN_REPORT_PAPERS
 
 
 DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$", re.I)
@@ -76,6 +77,8 @@ def build_quality_gate(
     github_filter: str,
     quality: str,
     dedup_stats: dict,
+    min_report_papers: int = MIN_REPORT_PAPERS,
+    report_selection_stats: dict[str, Any] | None = None,
 ) -> QualityGate:
     total = len(items)
     core = [item for item in items if item.inclusion.label == "core"]
@@ -93,6 +96,7 @@ def build_quality_gate(
         "adjacent_count": len(adjacent),
         "excluded_count": len(excluded),
         "final_report_count": len(final_items),
+        "min_report_papers": min_report_papers,
         "core_ratio": round(len(core) / total, 4) if total else 0,
         "pdf_url_coverage": round(with_pdf_url / len(core), 4) if core else 0,
         "pdf_downloaded": downloaded,
@@ -104,6 +108,8 @@ def build_quality_gate(
         "github_filter": github_filter,
         "quality": quality,
     }
+    if report_selection_stats:
+        metrics.update(report_selection_stats)
 
     strictness = {"fast": 5, "balanced": 8, "strict": 12}.get(quality, 8)
     issues: list[str] = []
@@ -120,11 +126,16 @@ def build_quality_gate(
     if github_filter == "required" and len(final_items) < min(5, max_papers):
         issues.append("github_filter_too_strict")
         recommendations.append("Use github_filter=any for a fuller scholarly corpus, then inspect code table separately.")
+    if len(final_items) < min_report_papers:
+        issues.append("final_report_below_minimum")
+        recommendations.append(f"Broaden the query or add a local corpus; PaperPilot requires at least {min_report_papers} report papers.")
     if warning_count > max(3, len(core) // 3):
         issues.append("many_verification_warnings")
         recommendations.append("Review DOI, URL, and code confidence warnings before citing.")
 
-    if "too_few_core_papers" in issues or "github_filter_too_strict" in issues:
+    if "final_report_below_minimum" in issues:
+        verdict = "needs_user_attention"
+    elif "too_few_core_papers" in issues or "github_filter_too_strict" in issues:
         verdict = "retry"
     elif issues and quality == "strict":
         verdict = "needs_user_attention"

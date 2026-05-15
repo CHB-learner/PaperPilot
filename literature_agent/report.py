@@ -86,6 +86,16 @@ def build_canonical_report(
             "excluded": len(excluded_items),
             "reported": len(report_items),
         },
+        "minimum_report_policy": {
+            "min_report_papers": quality_gate.metrics.get("min_report_papers", 30),
+            "final_report_count": quality_gate.metrics.get("final_report_count", len(report_items)),
+            "core_report_count": quality_gate.metrics.get("core_report_count", len(report_items)),
+            "adjacent_report_count": quality_gate.metrics.get("adjacent_report_count", 0),
+            "minimum_fill_count": quality_gate.metrics.get("minimum_fill_count", 0),
+            "code_filter_fallback_count": quality_gate.metrics.get("code_filter_fallback_count", 0),
+            "adjacent_fill_count": quality_gate.metrics.get("adjacent_fill_count", 0),
+            "selection_policy": quality_gate.metrics.get("selection_policy", "core_first"),
+        },
         "quality_gate": quality_gate.to_dict(),
         "papers": papers,
         "citation_map": {key: _citation_reference(paper) for key, paper in citation_map.items()},
@@ -220,6 +230,9 @@ def _paper_entry(item: CorpusItem, index: int) -> dict[str, Any]:
         "relevance_score": paper.relevance_score,
         "inclusion_score": item.inclusion.score,
         "inclusion_reason": item.inclusion.reason,
+        "report_role": (paper.raw or {}).get("report_role", "core"),
+        "report_tier": (paper.raw or {}).get("report_tier", item.inclusion.label),
+        "report_selection_reason": (paper.raw or {}).get("report_selection_reason", ""),
         "method_category": "",
         "code_url": paper.github_url or paper.code_url or "",
         "code_confidence": max((artifact.confidence for artifact in item.code_artifacts), default=0.0),
@@ -747,6 +760,18 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 
 检索来源：{{ report.protocol.search_sources | join(", ") }}。开放 PDF 只在明确可访问时下载，不绕过付费墙。
 
+### 30 篇最低报告策略
+
+本报告要求正式论文列表不少于 {{ report.minimum_report_policy.min_report_papers }} 篇。选择顺序为：优先核心论文；若代码筛选导致数量不足，则保留高相关核心论文并标记为 `code_filter_fallback`；若核心语料仍不足，则使用相关但非核心论文补齐，并标记为 `adjacent_fill` 或 `minimum_fill`。
+
+| 指标 | 数量 |
+|---|---:|
+| 进入报告总数 | {{ report.minimum_report_policy.final_report_count }} |
+| 核心论文 | {{ report.minimum_report_policy.core_report_count }} |
+| 相关补齐论文 | {{ report.minimum_report_policy.adjacent_report_count }} |
+| 代码筛选 fallback | {{ report.minimum_report_policy.code_filter_fallback_count }} |
+| 最低数量补齐 | {{ report.minimum_report_policy.minimum_fill_count }} |
+
 ### 来源覆盖情况
 
 | 来源 | 领域 | 状态 | 查询数 | 返回数 | 错误数 |
@@ -853,17 +878,17 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 
 ## 8. 核心论文表
 
-| # | 年份 | 论文 | 作者 | 来源 | 引用 | 代码 | PDF |
-|---:|---:|---|---|---|---:|---|---|
+| # | 年份 | 论文 | 层级 | 作者 | 来源 | 引用 | 代码 | PDF |
+|---:|---:|---|---|---|---|---:|---|---|
 {% for paper in report.papers %}
-| {{ paper.index }} | {{ paper.year }} | {{ paper.display_title | replace("|", "\\|") }} | {{ paper.author_text | replace("|", "\\|") }} | {{ paper.venue | replace("|", "\\|") }} | {{ paper.citation_count }} | {% if paper.code_url %}[Code]({{ paper.code_url }}){% else %}No{% endif %} | {% if paper.pdf_url %}[PDF]({{ paper.pdf_url }}){% else %}No{% endif %} |
+| {{ paper.index }} | {{ paper.year }} | {{ paper.display_title | replace("|", "\\|") }} | {{ paper.report_role }} | {{ paper.author_text | replace("|", "\\|") }} | {{ paper.venue | replace("|", "\\|") }} | {{ paper.citation_count }} | {% if paper.code_url %}[Code]({{ paper.code_url }}){% else %}No{% endif %} | {% if paper.pdf_url %}[PDF]({{ paper.pdf_url }}){% else %}No{% endif %} |
 {% endfor %}
 
 ## 9. 方法分类与证据矩阵
 
 | 论文 | 年份 | 方法类别 | 任务 | 代码 | 证据基础 | 局限 |
 |---|---:|---|---|---|---|---|
-{% for row in report.literature_matrix if row.inclusion_label == "core" %}
+{% for row in report.literature_matrix %}
 | {{ row.display_title | replace("|", "\\|") }} | {{ row.year }} | {{ row.method_category }} | {{ row.task }} | {% if row.code_url %}[Code]({{ row.code_url }}){% else %}No{% endif %} | {{ row.evidence_basis }} | {{ row.limitations | join("; ") }} |
 {% endfor %}
 
@@ -966,6 +991,18 @@ Research question: {{ report.protocol.research_question }}
 | Reported papers | {{ report.prisma.reported }} |
 
 Sources searched: {{ report.protocol.search_sources | join(", ") }}. Open PDFs were downloaded only when clearly available; no paywall bypassing was attempted.
+
+### 30-Paper Minimum Policy
+
+The formal report list requires at least {{ report.minimum_report_policy.min_report_papers }} papers. Selection is core-first; if code filtering leaves too few papers, highly relevant core papers are retained as `code_filter_fallback`; if core coverage is still insufficient, adjacent papers are used as `adjacent_fill` or `minimum_fill`.
+
+| Metric | Count |
+|---|---:|
+| Reported papers | {{ report.minimum_report_policy.final_report_count }} |
+| Core report papers | {{ report.minimum_report_policy.core_report_count }} |
+| Adjacent fill papers | {{ report.minimum_report_policy.adjacent_report_count }} |
+| Code-filter fallback | {{ report.minimum_report_policy.code_filter_fallback_count }} |
+| Minimum-fill papers | {{ report.minimum_report_policy.minimum_fill_count }} |
 
 ### Source Coverage
 
@@ -1073,17 +1110,17 @@ Evidence limitations: {{ item.limitations | join("; ") }}
 
 ## 8. Core Papers
 
-| # | Year | Paper | Authors | Venue | Cites | Code | PDF |
-|---:|---:|---|---|---|---:|---|---|
+| # | Year | Paper | Tier | Authors | Venue | Cites | Code | PDF |
+|---:|---:|---|---|---|---|---:|---|---|
 {% for paper in report.papers %}
-| {{ paper.index }} | {{ paper.year }} | {{ paper.display_title | replace("|", "\\|") }} | {{ paper.author_text | replace("|", "\\|") }} | {{ paper.venue | replace("|", "\\|") }} | {{ paper.citation_count }} | {% if paper.code_url %}[Code]({{ paper.code_url }}){% else %}No{% endif %} | {% if paper.pdf_url %}[PDF]({{ paper.pdf_url }}){% else %}No{% endif %} |
+| {{ paper.index }} | {{ paper.year }} | {{ paper.display_title | replace("|", "\\|") }} | {{ paper.report_role }} | {{ paper.author_text | replace("|", "\\|") }} | {{ paper.venue | replace("|", "\\|") }} | {{ paper.citation_count }} | {% if paper.code_url %}[Code]({{ paper.code_url }}){% else %}No{% endif %} | {% if paper.pdf_url %}[PDF]({{ paper.pdf_url }}){% else %}No{% endif %} |
 {% endfor %}
 
 ## 9. Evidence Matrix
 
 | Paper | Year | Method Category | Task | Code | Evidence Basis | Limitations |
 |---|---:|---|---|---|---|---|
-{% for row in report.literature_matrix if row.inclusion_label == "core" %}
+{% for row in report.literature_matrix %}
 | {{ row.display_title | replace("|", "\\|") }} | {{ row.year }} | {{ row.method_category }} | {{ row.task }} | {% if row.code_url %}[Code]({{ row.code_url }}){% else %}No{% endif %} | {{ row.evidence_basis }} | {{ row.limitations | join("; ") }} |
 {% endfor %}
 

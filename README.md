@@ -54,6 +54,8 @@ Each run creates a dedicated folder under `runs/` with full state, logs, and int
 - Consistent `[1][2][3]` citation mapping
 - Method taxonomy and evidence matrix
 - Markdown + HTML + PDF outputs with aligned content
+- Formal reports contain at least 30 papers when enough screened evidence exists
+- Obsidian Wiki export with paper, method, topic, and claim notes
 
 ### Quality controls
 - Quality gates and reflection workflow
@@ -249,7 +251,22 @@ flowchart LR
 - `evidence_ledger.json` / `review_agent_findings.json`
 - `report.canonical.json` / `report.zh.md` / `report.en.md`
 - `report.zh.html` / `report.en.html` / `report.zh.pdf` / `report.en.pdf`
+- `report_selection.json` / `shortfall.json` when the 30-paper minimum cannot be met
+- `obsidian_wiki/` with `index.md`, paper notes, method notes, topic notes, claim notes, and wiki lint metadata
 - `pdfs/` / `source_diagnostics.json` / `registries.json` / `prompt_manifest.json`
+
+## 🧠 Obsidian Wiki
+
+Each successful run generates `runs/<task-id>/obsidian_wiki/` by default. Open that folder as an Obsidian vault to browse:
+
+- `index.md`: research entry point and the 30-paper overview
+- `papers/`: one note per reported paper with citation label, PDF/code links, method family, and evidence basis
+- `methods/`: method-family notes linked to representative papers
+- `topics/`: query/subtopic notes
+- `claims/`: evidence-map claim notes
+- `_meta/manifest.json` and `_meta/wiki_lint.json`: provenance, hashes, broken-link checks
+
+Use `--no-obsidian-wiki` to skip Wiki generation.
 
 ## 🧩 Code filter modes
 
@@ -260,7 +277,8 @@ flowchart LR
 ## 🧪 CLI options (important ones)
 
 ```text
---max-papers INT                 maximum papers in final report view
+--max-papers INT                 maximum papers in final report view; must be >= 30
+--min-report-papers INT          minimum papers required in formal reports; default/minimum: 30
 --since-year INT                 preferred lower year bound
 --github-filter any|required|none
 --github-search-limit INT
@@ -274,6 +292,7 @@ flowchart LR
 --sources auto|all|core|biomed|cs|configured
 --enable-source SOURCE           enable one source (repeatable)
 --disable-source SOURCE          disable one source (repeatable)
+--no-obsidian-wiki               skip Obsidian Wiki export
 ```
 
 See `paperpilot --help` for full options and Chinese/English output.

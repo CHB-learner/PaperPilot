@@ -36,6 +36,7 @@ TOOLS = [
     ToolManifest("pdf_downloader", "pdf", "Open-access PDF download without paywall bypass.", ["Paper[]"], ["download_log.json", "pdfs/"]),
     ToolManifest("fulltext_parser", "pdf", "Extract text from downloaded PDFs.", ["download_log.json"], ["fulltext/", "paper_notes.json"]),
     ToolManifest("report_renderer", "report", "Render canonical report to Markdown, HTML, and PDF.", ["report.canonical.json"], ["report.zh.*", "report.en.*"]),
+    ToolManifest("obsidian_wiki_renderer", "report", "Render the canonical report into an Obsidian wikilink knowledge graph.", ["report.canonical.json"], ["obsidian_wiki/"]),
 ]
 
 
@@ -45,7 +46,7 @@ CAPABILITIES = [
         "Default AI literature review workflow.",
         ["intake", "protocol", "search", "corpus", "screening", "verification", "synthesis", "review", "report"],
         ["keyword", "LLM config"],
-        ["report.canonical.json", "report.zh.md", "report.en.md", "report.zh.html", "report.en.html", "report.zh.pdf", "report.en.pdf"],
+        ["report.canonical.json", "report.zh.md", "report.en.md", "report.zh.html", "report.en.html", "report.zh.pdf", "report.en.pdf", "obsidian_wiki/"],
         ["quality_gate", "review_agent_checks", "evidence_ledger"],
     ),
     CapabilityManifest(

@@ -23,6 +23,7 @@ from .config import (
 from .doctor import run_doctor
 from .intent import ParsedIntent, parse_research_intent_with_llm
 from .openai_client import OpenAIClient
+from .report_policy import MIN_REPORT_PAPERS, validate_report_paper_bounds
 from .sources import run_sources_command
 from .ui import (
     console,
@@ -49,6 +50,7 @@ def build_parser(language: str = "bilingual") -> argparse.ArgumentParser:
     )
     parser.add_argument("keyword", nargs="?", help=text["keyword"])
     parser.add_argument("--max-papers", type=int, default=50, help=text["max_papers"])
+    parser.add_argument("--min-report-papers", type=int, default=MIN_REPORT_PAPERS, help=text["min_report_papers"])
     parser.add_argument("--since-year", type=int, default=2021, help=text["since_year"])
     parser.add_argument(
         "--output-dir",
@@ -147,6 +149,11 @@ def build_parser(language: str = "bilingual") -> argparse.ArgumentParser:
         action="store_true",
         help=text["doctor"],
     )
+    parser.add_argument(
+        "--no-obsidian-wiki",
+        action="store_true",
+        help=text["no_obsidian_wiki"],
+    )
     return parser
 
 
@@ -185,6 +192,7 @@ def parser_text(language: str) -> dict[str, str]:
   report.en.html          英文 HTML 报告
   report.zh.pdf           中文 PDF 报告
   report.en.pdf           英文 PDF 报告
+  obsidian_wiki/          Obsidian 知识图谱
   download_log.json       PDF 下载日志
   pdfs/                   开放 PDF 文件
   fulltext/               PDF 全文抽取文本
@@ -194,7 +202,8 @@ def parser_text(language: str) -> dict[str, str]:
   review_agent_findings.json  复核 Agent 检查结果
 """,
             "keyword": "研究关键词或主题，例如 RNA",
-            "max_papers": "最终保留论文数量，默认 50",
+            "max_papers": "最终保留论文数量上限，必须 >= 30，默认 50",
+            "min_report_papers": "正式报告最低论文数量，最低 30，默认 30",
             "since_year": "优先检索该年份之后的论文，默认 2021",
             "output_dir": "输出目录；默认自动生成 runs/<task-id>",
             "openai_model": "OpenAI 或兼容服务的模型名，默认 gpt-5.2",
@@ -214,6 +223,7 @@ def parser_text(language: str) -> dict[str, str]:
             "enable_source": "额外启用某个来源，可重复传入",
             "disable_source": "禁用某个来源，可重复传入",
             "doctor": "自检 LLM 连接和已配置 API key 的检索来源",
+            "no_obsidian_wiki": "不生成 obsidian_wiki/ 知识图谱",
         }
     if language == "en":
         return {
@@ -249,6 +259,7 @@ Outputs:
   report.en.html          English HTML report
   report.zh.pdf           Chinese PDF report
   report.en.pdf           English PDF report
+  obsidian_wiki/          Obsidian knowledge graph
   download_log.json       PDF download log
   pdfs/                   Open-access PDFs
   fulltext/               Extracted PDF text
@@ -258,7 +269,8 @@ Outputs:
   review_agent_findings.json  Review-agent findings
 """,
             "keyword": "Research keyword or topic, e.g. RNA",
-            "max_papers": "Maximum ranked papers to keep, default: 50",
+            "max_papers": "Maximum ranked papers to keep; must be >= 30, default: 50",
+            "min_report_papers": "Minimum papers required in the formal report; minimum/default: 30",
             "since_year": "Prefer papers since this year, default: 2021",
             "output_dir": "Output directory; default: auto-generated runs/<task-id>",
             "openai_model": "OpenAI or compatible model name, default: gpt-5.2",
@@ -278,6 +290,7 @@ Outputs:
             "enable_source": "Enable an additional source; repeatable",
             "disable_source": "Disable a source; repeatable",
             "doctor": "Check LLM connectivity and configured API-key paper sources",
+            "no_obsidian_wiki": "Do not generate obsidian_wiki/ knowledge graph output",
         }
     return {
         "description": "AI 文献检索 Agent / AI literature search agent",
@@ -313,6 +326,7 @@ Outputs:
   report.en.html          英文 HTML 报告 / English HTML report
   report.zh.pdf           中文 PDF 报告 / Chinese PDF report
   report.en.pdf           英文 PDF 报告 / English PDF report
+  obsidian_wiki/          Obsidian 知识图谱 / Obsidian knowledge graph
   download_log.json       PDF 下载日志 / PDF download log
   pdfs/                   开放 PDF 文件 / open-access PDFs
   fulltext/               PDF 文本抽取 / extracted PDF text
@@ -322,7 +336,8 @@ Outputs:
   review_agent_findings.json  复核 Agent 检查结果 / review-agent findings
 """,
         "keyword": "研究关键词或主题，例如 RNA / Research keyword or topic, e.g. RNA",
-        "max_papers": "最终保留论文数量，默认 50 / Maximum ranked papers to keep, default: 50",
+        "max_papers": "最终保留论文数量上限，必须 >= 30，默认 50 / Maximum ranked papers to keep; must be >= 30, default: 50",
+        "min_report_papers": "正式报告最低论文数量，最低/默认 30 / Minimum formal report papers, minimum/default: 30",
         "since_year": "优先检索该年份之后的论文，默认 2021 / Prefer papers since this year, default: 2021",
         "output_dir": "输出目录；默认自动生成 runs/<task-id> / Output directory; default: auto-generated runs/<task-id>",
         "openai_model": "OpenAI 模型名，默认 gpt-5.2 / OpenAI model name, default: gpt-5.2",
@@ -342,6 +357,7 @@ Outputs:
         "enable_source": "额外启用来源，可重复传入 / Enable an additional source; repeatable",
         "disable_source": "禁用来源，可重复传入 / Disable a source; repeatable",
         "doctor": "自检 LLM 和已配置 API-key 来源 / Check LLM and configured API-key sources",
+        "no_obsidian_wiki": "不生成 obsidian_wiki/ 知识图谱 / Do not generate obsidian_wiki/ output",
     }
 
 
@@ -405,6 +421,7 @@ def resume_run(argv: list[str]) -> int:
     args = argparse.Namespace(
         keyword=task.get("keyword") or task.get("query") or run_dir.name,
         max_papers=int(task.get("max_papers") or defaults.max_papers),
+        min_report_papers=int(task.get("min_report_papers") or defaults.min_report_papers),
         since_year=task.get("since_year") or defaults.since_year,
         output_dir=run_dir,
         openai_model=defaults.openai_model,
@@ -424,11 +441,16 @@ def resume_run(argv: list[str]) -> int:
         sources=task.get("sources") or defaults.sources,
         enable_source=task.get("enable_source") or [],
         disable_source=task.get("disable_source") or [],
+        no_obsidian_wiki=bool(task.get("no_obsidian_wiki", defaults.no_obsidian_wiki)),
     )
     return run_agent(args)
 
 
 def run_agent(args: argparse.Namespace) -> int:
+    ok, message = validate_report_paper_bounds(args.max_papers, getattr(args, "min_report_papers", MIN_REPORT_PAPERS))
+    if not ok:
+        print_error_panel("Invalid report size", message)
+        return 2
     client = client_from_args(args)
     if not client.available:
         print_error_panel(
@@ -551,6 +573,7 @@ def namespace_from_intent(intent: ParsedIntent, defaults: argparse.Namespace) ->
     return argparse.Namespace(
         keyword=intent.keyword,
         max_papers=intent.max_papers,
+        min_report_papers=defaults.min_report_papers,
         since_year=intent.since_year,
         output_dir=None,
         openai_model=defaults.openai_model,
@@ -570,6 +593,7 @@ def namespace_from_intent(intent: ParsedIntent, defaults: argparse.Namespace) ->
         sources=getattr(intent, "sources", defaults.sources),
         enable_source=defaults.enable_source,
         disable_source=defaults.disable_source,
+        no_obsidian_wiki=defaults.no_obsidian_wiki,
     )
 
 
@@ -695,8 +719,8 @@ def active_model_label() -> str:
 def candidate_limit(max_papers: int, query_count: int, github_filter: str) -> int:
     query_count = max(1, query_count)
     if github_filter == "required":
-        return max(10, min(30, (max_papers * 3) // query_count))
-    return max(8, min(25, (max_papers * 2) // query_count))
+        return max(18, min(60, (max(max_papers, MIN_REPORT_PAPERS) * 5) // query_count))
+    return max(15, min(50, (max(max_papers, MIN_REPORT_PAPERS) * 4) // query_count))
 
 
 if __name__ == "__main__":

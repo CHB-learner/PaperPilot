@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0] - 2026-05-15
+
+### Added
+- Added a formal 30-paper minimum policy for generated literature reports.
+- Added `--min-report-papers` and `--no-obsidian-wiki` CLI options.
+- Added `report_selection.json` and `shortfall.json` diagnostics for minimum-report enforcement.
+- Added default Obsidian Wiki export under `obsidian_wiki/` with paper, method, topic, claim, manifest, and lint files.
+
+### Changed
+- Final report selection is now core-first, then code-filter fallback, then adjacent-paper fill when needed.
+- Quality gate metrics now record minimum-report counts, fill counts, and code-filter fallback counts.
+- README, Chinese README, local usage docs, and project homepage now document the 30-paper policy and Obsidian Wiki output.
+
 ## [1.4.5] - 2026-05-15
 
 ### Added

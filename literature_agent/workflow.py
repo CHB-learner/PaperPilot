@@ -10,6 +10,7 @@ from .config import load_app_config
 from .corpus import corpus_items_from_papers, enhanced_deduplicate, split_corpus
 from .events import EventLogger, read_events
 from .evidence import build_evidence_ledger
+from .obsidian import write_obsidian_wiki
 from .pdf import attach_fulltext_paths, download_pdfs, enrich_unpaywall, extract_downloaded_fulltext
 from .pdf_report import write_pdf_report
 from .planner import make_plan
@@ -19,6 +20,7 @@ from .protocol import build_protocol
 from .query import understand_query
 from .reflection import reflect
 from .registries import registry_manifest
+from .report_policy import MIN_REPORT_PAPERS, select_report_items
 from .report import build_canonical_report, render_html_reports, render_reports
 from .review_agents import run_review_agents
 from .searchers import search_all as _legacy_search_all
@@ -89,7 +91,8 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     write_json(output_dir / "user_corpus_log.json", user_corpus_log)
     if user_papers:
         events.emit("progress", "search", "Loaded user corpus", count=len(user_papers))
-    per_query_limit = candidate_limit(args.max_papers, len(plan.search_queries), args.github_filter)
+    min_report_papers = getattr(args, "min_report_papers", MIN_REPORT_PAPERS)
+    per_query_limit = candidate_limit(max(args.max_papers, min_report_papers), len(plan.search_queries), args.github_filter)
     if search_all is not _legacy_search_all:
         searched_papers = search_all(plan, per_query_limit=per_query_limit)
         source_diagnostics = {"enabled_sources": ["test"], "total_returned": len(searched_papers), "sources": {}}
@@ -146,19 +149,25 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     stage_start(5, 9, "Screening", "Classifying papers as core, adjacent, or excluded")
     items = corpus_items_from_papers(deduped, plan, protocol, client)
     core_items, adjacent_items, excluded_items = split_corpus(items)
-    final_core_items = final_view(core_items, args.github_filter, args.max_papers)
-    if not final_core_items and core_items:
-        final_core_items = core_items[: args.max_papers]
+    report_selection = select_report_items(
+        core_items,
+        adjacent_items,
+        args.github_filter,
+        max_papers=args.max_papers,
+        min_report_papers=min_report_papers,
+    )
+    final_core_items = report_selection.items
     write_json(output_dir / "corpus.json", [item.to_dict() for item in items])
     write_json(output_dir / "core_papers.json", [item.to_dict() for item in core_items])
     write_json(output_dir / "adjacent_papers.json", [item.to_dict() for item in adjacent_items])
     write_json(output_dir / "excluded_papers.json", [item.to_dict() for item in excluded_items])
+    write_json(output_dir / "report_selection.json", report_selection.stats)
     mark_stage(
         output_dir,
         state,
         "screening",
-        "completed",
-        {"core": len(core_items), "adjacent": len(adjacent_items), "excluded": len(excluded_items), "final": len(final_core_items)},
+        "completed" if not report_selection.shortfall else "needs_user_attention",
+        {"core": len(core_items), "adjacent": len(adjacent_items), "excluded": len(excluded_items), "final": len(final_core_items), **report_selection.stats},
         events=events,
     )
     stage_done(
@@ -185,7 +194,7 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
 
     mark_stage(output_dir, state, "synthesis", "running", events=events)
     stage_start(7, 9, "Synthesis", "Building literature matrix and field-level synthesis")
-    matrix_items = core_items + (adjacent_items if args.include_adjacent else [])
+    matrix_items = core_items + adjacent_items
     literature_matrix = build_literature_matrix(matrix_items)
     synthesis = build_synthesis(core_items, adjacent_items, literature_matrix, plan, protocol, client)
     write_json(output_dir / "literature_matrix.json", literature_matrix)
@@ -204,6 +213,8 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         github_filter=args.github_filter,
         quality=args.quality,
         dedup_stats=dedup_stats,
+        min_report_papers=min_report_papers,
+        report_selection_stats=report_selection.stats,
     )
     reflection = reflect(final_papers, plan, download_log, args.github_filter, client)
     reflection.update(
@@ -216,12 +227,28 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
             "github_enrichment": github_enrichment,
             "task_id": task_id,
             "retry_performed": False,
+            "minimum_report_policy": report_selection.stats,
+            "shortfall": report_selection.shortfall,
         }
     )
     write_json(output_dir / "quality_gate.json", quality_gate.to_dict())
     write_json(output_dir / "reflection.json", reflection)
     mark_stage(output_dir, state, "review", "completed", {"verdict": quality_gate.verdict}, events=events)
     stage_done("Review", {"verdict": quality_gate.verdict, "issues": len(quality_gate.issues)})
+
+    if report_selection.shortfall:
+        shortfall = dict(report_selection.shortfall)
+        shortfall["quality_gate"] = quality_gate.to_dict()
+        shortfall["report_selection"] = report_selection.stats
+        write_json(output_dir / "shortfall.json", shortfall)
+        mark_stage(output_dir, state, "report", "needs_user_attention", shortfall, events=events)
+        write_manifest(output_dir, state, client)
+        events.emit("warn", "report", "Report not generated because fewer than minimum report papers were available", **shortfall)
+        console.print(
+            f"[yellow]Report not generated: only {shortfall['final_report_count']} papers available; "
+            f"{shortfall['min_report_papers']} required. See shortfall.json.[/yellow]"
+        )
+        return 2
 
     mark_stage(output_dir, state, "report", "running", events=events)
     stage_start(9, 9, "Report", "Writing canonical, bilingual Markdown, HTML, and PDF reports")
@@ -261,8 +288,19 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     (output_dir / "report.en.html").write_text(en_html, encoding="utf-8")
     write_pdf_report(zh, output_dir / "report.zh.pdf", title=canonical["title_zh"])
     write_pdf_report(en, output_dir / "report.en.pdf", title=canonical["title"])
+    obsidian_manifest = None
+    if not getattr(args, "no_obsidian_wiki", False):
+        obsidian_manifest = write_obsidian_wiki(canonical, output_dir, task_id=task_id)
+        write_json(output_dir / "obsidian_wiki_manifest.json", obsidian_manifest)
     mark_stage(output_dir, state, "report", "completed", {"review_verdict": review_agent_findings["verdict"]}, events=events)
-    stage_done("Report", {"files": "report.zh/en.md/html/pdf", "review": review_agent_findings["verdict"]})
+    stage_done(
+        "Report",
+        {
+            "files": "report.zh/en.md/html/pdf",
+            "wiki": "obsidian_wiki" if obsidian_manifest else "disabled",
+            "review": review_agent_findings["verdict"],
+        },
+    )
     write_manifest(output_dir, state, client)
     events.emit("done", "report", "Run completed", output_dir=str(output_dir.resolve()))
     print_success(f"Done. Output: {output_dir.resolve()}")
@@ -311,6 +349,8 @@ def task_payload(task_id: str, args: argparse.Namespace, output_dir: Path) -> di
         "interaction": getattr(args, "interaction", "auto"),
         "quality": getattr(args, "quality", "balanced"),
         "include_adjacent": getattr(args, "include_adjacent", False),
+        "min_report_papers": getattr(args, "min_report_papers", MIN_REPORT_PAPERS),
+        "no_obsidian_wiki": getattr(args, "no_obsidian_wiki", False),
         "user_corpus": getattr(args, "user_corpus", None) or [],
         "sources": getattr(args, "sources", "auto"),
         "enable_source": getattr(args, "enable_source", None) or [],
@@ -374,8 +414,8 @@ def final_view(core_items, github_filter: str, max_papers: int):
 def candidate_limit(max_papers: int, query_count: int, github_filter: str) -> int:
     query_count = max(1, query_count)
     if github_filter == "required":
-        return max(12, min(35, (max_papers * 4) // query_count))
-    return max(10, min(30, (max_papers * 3) // query_count))
+        return max(18, min(60, (max(max_papers, MIN_REPORT_PAPERS) * 5) // query_count))
+    return max(15, min(50, (max(max_papers, MIN_REPORT_PAPERS) * 4) // query_count))
 
 
 def inspect_run(path_or_id: str) -> int:
