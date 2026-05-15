@@ -30,7 +30,7 @@ jobs:
         run: |
           VERSION_INPUT="${{ github.event.inputs.version }}"
           if [ -n "${VERSION_INPUT}" ]; then
-            ./publish_pypi.sh --version "${VERSION_INPUT}" --dry-run
+            ./scripts/publish_pypi.sh --version "${VERSION_INPUT}" --dry-run
           fi
       - name: Build distributions
         run: python -m build
