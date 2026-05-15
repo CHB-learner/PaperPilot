@@ -66,6 +66,8 @@ cd "$ROOT_DIR"
 
 if [[ "$DRY_RUN" == "true" ]]; then
   SKIP_PYPI="true"
+  SKIP_PUSH="true"
+  SKIP_GH_RELEASE="true"
   echo "Dry-run mode enabled: skip pushing and PyPI upload."
 fi
 
@@ -116,7 +118,11 @@ if [[ "$SKIP_PUSH" == "false" ]]; then
 fi
 
 if [[ "$SKIP_GH_RELEASE" == "false" && "$SKIP_PUSH" == "false" ]]; then
-  RELEASE_NOTES="$(awk '/^## \\[[0-9]/{flag=1; next} flag && /^## \\[/{flag=0} flag {print}' CHANGELOG.md | sed '/^$/d' | head -n 80)"
+  RELEASE_NOTES="$(awk '
+    /^## \[[0-9]/{flag=1; next}
+    flag && /^## \[/{flag=0}
+    flag {print}
+  ' CHANGELOG.md | sed '/^$/d' | head -n 80)"
   if [[ -n "${RELEASE_NOTES// /}" ]]; then
     printf '%s\n' "$RELEASE_NOTES" > /tmp/paperpilot_release_notes.md
   else
