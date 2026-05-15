@@ -1,0 +1,71 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PaperPilot AI literature review agent">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="0.55" stop-color="#13233F"/>
+      <stop offset="1" stop-color="#0B3B3B"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="114" y1="82" x2="392" y2="344" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#DCEAFE"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="104" y1="300" x2="404" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="22" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="420" rx="32" fill="url(#bg)"/>
+  <path d="M0 326C162 270 278 292 422 334C584 382 708 392 884 322C1018 268 1104 248 1200 272V420H0V326Z" fill="#0F766E" opacity="0.18"/>
+  <path d="M62 56H1138" stroke="#334155" stroke-width="1"/>
+  <path d="M62 365H1138" stroke="#334155" stroke-width="1"/>
+
+  <g filter="url(#shadow)">
+    <rect x="78" y="78" width="300" height="264" rx="30" fill="#111827" stroke="#334155"/>
+    <path d="M122 292L333 108L282 326L228 245L122 292Z" fill="url(#paper)"/>
+    <path d="M228 245L333 108L197 228L122 292L228 245Z" fill="url(#accent)"/>
+    <path d="M228 245L282 326L253 229L333 108L228 245Z" fill="#22C55E"/>
+    <path d="M197 228L228 245L333 108L197 228Z" fill="#FFFFFF"/>
+    <circle cx="134" cy="120" r="8" fill="#F59E0B"/>
+    <circle cx="344" cy="306" r="7" fill="#A78BFA"/>
+  </g>
+
+  <text x="430" y="122" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="0">PaperPilot</text>
+  <text x="432" y="166" fill="#CBD5E1" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">AI literature review agent for search, evidence, code, PDFs, and bilingual reports.</text>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif" font-size="17" font-weight="700">
+    <rect x="432" y="205" width="118" height="42" rx="12" fill="#1D4ED8"/>
+    <text x="455" y="232" fill="white">Intake</text>
+    <path d="M562 226H603" stroke="#64748B" stroke-width="3" stroke-linecap="round"/>
+    <path d="M598 218L607 226L598 234" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="618" y="205" width="128" height="42" rx="12" fill="#7C3AED"/>
+    <text x="641" y="232" fill="white">Protocol</text>
+    <path d="M758 226H799" stroke="#64748B" stroke-width="3" stroke-linecap="round"/>
+    <path d="M794 218L803 226L794 234" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="814" y="205" width="112" height="42" rx="12" fill="#0891B2"/>
+    <text x="838" y="232" fill="white">Search</text>
+    <path d="M938 226H979" stroke="#64748B" stroke-width="3" stroke-linecap="round"/>
+    <path d="M974 218L983 226L974 234" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="994" y="205" width="120" height="42" rx="12" fill="#059669"/>
+    <text x="1017" y="232" fill="white">Report</text>
+  </g>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">
+    <rect x="432" y="284" width="126" height="34" rx="17" fill="#1E293B" stroke="#475569"/>
+    <text x="455" y="306" fill="#E2E8F0">Evidence</text>
+    <rect x="572" y="284" width="116" height="34" rx="17" fill="#1E293B" stroke="#475569"/>
+    <text x="596" y="306" fill="#E2E8F0">GitHub</text>
+    <rect x="702" y="284" width="90" height="34" rx="17" fill="#1E293B" stroke="#475569"/>
+    <text x="726" y="306" fill="#E2E8F0">PDFs</text>
+    <rect x="806" y="284" width="140" height="34" rx="17" fill="#1E293B" stroke="#475569"/>
+    <text x="829" y="306" fill="#E2E8F0">ZH / EN</text>
+    <rect x="960" y="284" width="154" height="34" rx="17" fill="#1E293B" stroke="#475569"/>
+    <text x="983" y="306" fill="#E2E8F0">HTML + PDF</text>
+  </g>
+</svg>

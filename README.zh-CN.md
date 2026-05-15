@@ -1,6 +1,6 @@
 # PaperPilot
 
-[English](README.md) | [中文](README.zh-CN.md)
+[English](README.md) | [中文](README.zh-CN.md) | [项目主页](https://chb-learner.github.io/PaperPilot/)
 
 <p align="center">
   <img src="assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">

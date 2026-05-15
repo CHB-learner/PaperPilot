@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaperPilot - AI 文献调研 Agent</title>
+  <meta name="description" content="PaperPilot 是一个面向 AI 与 AI for Science 的文献调研 Agent，支持多源检索、代码发现、开放 PDF 下载、证据校验和中英文报告生成。">
+  <meta property="og:title" content="PaperPilot - AI 文献调研 Agent">
+  <meta property="og:description" content="从自然语言研究需求到 evidence-grounded bilingual literature review reports.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/paperpilot-hero.svg">
+  <link rel="icon" href="assets/paperpilot-logo.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #dbe4ee;
+      --panel: #ffffff;
+      --soft: #f8fafc;
+      --blue: #2563eb;
+      --cyan: #0891b2;
+      --green: #059669;
+      --purple: #7c3aed;
+      --amber: #d97706;
+      --shadow: 0 22px 70px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #f6f8fb;
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(246, 248, 251, 0.86);
+      border-bottom: 1px solid rgba(219, 228, 238, 0.82);
+    }
+
+    .nav-inner,
+    .section,
+    .hero-inner {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .nav-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .nav-links a {
+      padding: 8px 10px;
+      border-radius: 8px;
+    }
+
+    .nav-links a:hover {
+      background: #e8eef6;
+      color: var(--ink);
+    }
+
+    .hero {
+      position: relative;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(37, 99, 235, 0.13), transparent 30%),
+        radial-gradient(circle at 86% 22%, rgba(5, 150, 105, 0.13), transparent 26%),
+        linear-gradient(180deg, #f8fbff 0%, #eef4fa 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1.04fr 0.96fr;
+      gap: 54px;
+      align-items: center;
+      padding: 84px 0 70px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    h1 {
+      margin: 22px 0 18px;
+      max-width: 720px;
+      font-size: clamp(44px, 6vw, 76px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 660px;
+      color: #334155;
+      font-size: 19px;
+      line-height: 1.75;
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font-weight: 780;
+      border: 1px solid transparent;
+    }
+
+    .button.primary {
+      background: var(--ink);
+      color: white;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+    }
+
+    .button.secondary {
+      background: white;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .hero-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .terminal {
+      border-top: 1px solid #1e293b;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .terminal .dim {
+      color: #94a3b8;
+    }
+
+    .section {
+      padding: 74px 0;
+    }
+
+    .section-head {
+      max-width: 760px;
+      margin-bottom: 30px;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .feature,
+    .step,
+    .source-band,
+    .codebox {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 10px 34px rgba(15, 23, 42, 0.06);
+    }
+
+    .feature {
+      padding: 24px;
+    }
+
+    .feature .icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: var(--blue);
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .feature h3,
+    .step h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .feature p,
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .step {
+      min-height: 146px;
+      padding: 18px;
+      position: relative;
+    }
+
+    .step strong {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: #e0f2fe;
+      color: #075985;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .source-band {
+      padding: 24px;
+    }
+
+    .source-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      padding: 8px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .codebox {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .codebox .bar {
+      display: flex;
+      gap: 7px;
+      padding: 13px 16px;
+      background: #e8eef6;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    pre {
+      margin: 0;
+      padding: 22px;
+      overflow-x: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 14px;
+      line-height: 1.7;
+      border-radius: 0;
+    }
+
+    .outputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .list li {
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+      color: #334155;
+      font-weight: 650;
+    }
+
+    .cta {
+      background: #0f172a;
+      color: white;
+      border-radius: 22px;
+      padding: 42px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .cta h2 {
+      color: white;
+    }
+
+    .cta p {
+      color: #cbd5e1;
+      margin: 12px 0 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 28px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .hero-inner,
+      .outputs,
+      .cta {
+        grid-template-columns: 1fr;
+      }
+
+      .grid.three,
+      .grid.two,
+      .workflow {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .nav-links {
+        display: none;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .nav-inner,
+      .section,
+      .hero-inner {
+        width: min(100% - 28px, 1160px);
+      }
+
+      .hero-inner {
+        padding: 54px 0 48px;
+      }
+
+      .grid.three,
+      .grid.two,
+      .workflow {
+        grid-template-columns: 1fr;
+      }
+
+      .cta {
+        padding: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <div class="nav-inner">
+        <a class="brand" href="#">
+          <img src="assets/paperpilot-logo.svg" alt="">
+          <span>PaperPilot</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">功能</a>
+          <a href="#workflow">流程</a>
+          <a href="#sources">来源</a>
+          <a href="#quickstart">开始</a>
+          <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <span class="eyebrow">AI Literature Review Agent</span>
+          <h1>把一句调研需求，变成可审计的双语文献综述。</h1>
+          <p class="lead">PaperPilot 面向 AI、AI for Science 和交叉学科研究场景，自动完成需求理解、多源检索、论文筛选、代码仓库发现、开放 PDF 下载、证据综合，并生成中文和英文 Markdown、HTML、PDF 报告。</p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/CHB-learner/PaperPilot">查看 GitHub</a>
+            <a class="button secondary" href="https://pypi.org/project/paperpilot/">PyPI 安装</a>
+          </div>
+        </div>
+        <div class="hero-card" aria-label="PaperPilot preview">
+          <img src="assets/paperpilot-hero.svg" alt="PaperPilot workflow preview">
+          <div class="terminal">
+            <span class="dim">$</span> pip install paperpilot<br>
+            <span class="dim">$</span> PaperPilot<br>
+            <span class="dim">PaperPilot&gt;</span> 调研 RNA 逆折叠序列设计近五年的文献，要求有代码仓库
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="features" class="section">
+        <div class="section-head">
+          <p class="kicker">Why PaperPilot</p>
+          <h2>不是论文清单，而是一条完整的研究工作流。</h2>
+          <p>它把 LLM 的理解和写作能力放在需要判断的地方，把检索、去重、下载、状态记录和输出渲染交给确定性代码。</p>
+        </div>
+        <div class="grid three">
+          <article class="feature">
+            <div class="icon">1</div>
+            <h3>自然语言入口</h3>
+            <p>输入中文或英文调研需求，自动解析主题、年份、代码要求、PDF 下载策略和多样化检索关键词。</p>
+          </article>
+          <article class="feature">
+            <div class="icon">2</div>
+            <h3>证据驱动报告</h3>
+            <p>报告从 canonical model 渲染，论文编号、参考文献、代码链接和中英文结论保持一致。</p>
+          </article>
+          <article class="feature">
+            <div class="icon">3</div>
+            <h3>可观察运行</h3>
+            <p>每次任务生成独立 run folder，保存 state、events、protocol、corpus、verification 和 quality gate。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section">
+        <div class="section-head">
+          <p class="kicker">Agent Workflow</p>
+          <h2>Intake 到 Report 的状态机式 Agent。</h2>
+          <p>默认尽量自动，但关键阶段留下产物和诊断信息，方便复查、恢复和二次分析。</p>
+        </div>
+        <div class="workflow">
+          <article class="step"><strong>01</strong><h3>Intake</h3><p>解析用户需求、当前模型、来源配置和任务参数。</p></article>
+          <article class="step"><strong>02</strong><h3>Protocol</h3><p>生成研究问题、纳入/排除标准、负面关键词和检索计划。</p></article>
+          <article class="step"><strong>03</strong><h3>Search</h3><p>并发调用 Source Registry，也支持导入本地 PDF、BibTeX、RIS。</p></article>
+          <article class="step"><strong>04</strong><h3>Corpus</h3><p>统一论文模型，按 DOI、arXiv、PMID、标题相似度去重。</p></article>
+          <article class="step"><strong>05</strong><h3>Report</h3><p>生成中英文 Markdown、HTML、PDF，并附引用编号和代码仓库。</p></article>
+        </div>
+      </section>
+
+      <section id="sources" class="section">
+        <div class="section-head">
+          <p class="kicker">Source Registry</p>
+          <h2>覆盖 AI/CS、生医和 AI for Science 的多源检索。</h2>
+          <p>稳定免 key 来源默认启用；需要 API key 的来源在配置后自动加入检索和 doctor 自检。</p>
+        </div>
+        <div class="source-band">
+          <div class="source-list">
+            <span class="pill">arXiv</span>
+            <span class="pill">Semantic Scholar</span>
+            <span class="pill">OpenAlex</span>
+            <span class="pill">Crossref</span>
+            <span class="pill">OpenReview</span>
+            <span class="pill">PubMed</span>
+            <span class="pill">Europe PMC</span>
+            <span class="pill">bioRxiv</span>
+            <span class="pill">medRxiv</span>
+            <span class="pill">DBLP</span>
+            <span class="pill">ACL Anthology</span>
+            <span class="pill">DeepXiv / Agentic Data</span>
+            <span class="pill">CORE</span>
+            <span class="pill">Lens.org</span>
+            <span class="pill">IEEE Xplore</span>
+            <span class="pill">Springer Nature</span>
+            <span class="pill">Elsevier / Scopus</span>
+            <span class="pill">Dimensions</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="quickstart" class="section">
+        <div class="section-head">
+          <p class="kicker">Quick Start</p>
+          <h2>几条命令就能开始。</h2>
+          <p>首次运行会生成 `~/.paperpilot/config.json`，你可以配置 OpenAI-compatible LLM 和可选检索来源 API。</p>
+        </div>
+        <div class="outputs">
+          <div class="codebox">
+            <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            <pre><code>python -m pip install paperpilot -i https://pypi.org/simple
+
+PaperPilot
+
+PaperPilot sources list
+PaperPilot --doctor</code></pre>
+          </div>
+          <ul class="list">
+            <li>report.zh.md / report.en.md</li>
+            <li>report.zh.html / report.en.html</li>
+            <li>report.zh.pdf / report.en.pdf</li>
+            <li>ranked_papers.json / corpus.json</li>
+            <li>verification.json / quality_gate.json</li>
+            <li>source_diagnostics.json / events.jsonl</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="cta">
+          <div>
+            <h2>让文献调研像飞行计划一样可追踪。</h2>
+            <p>从关键词到证据链，从代码仓库到双语报告，PaperPilot 适合快速调研、方向梳理和 AI for Science 交叉主题探索。</p>
+          </div>
+          <a class="button secondary" href="https://github.com/CHB-learner/PaperPilot">Star on GitHub</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="section" style="padding:0;">
+        PaperPilot · MIT License · <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a> · <a href="https://pypi.org/project/paperpilot/">PyPI</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
