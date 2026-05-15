@@ -20,12 +20,14 @@ from .config import (
     save_app_config,
     test_llm_config,
 )
+from .doctor import run_doctor
 from .intent import ParsedIntent, parse_research_intent_with_llm
 from .openai_client import OpenAIClient
 from .sources import run_sources_command
 from .ui import (
     console,
     print_choice_menu,
+    print_doctor_report,
     print_error_panel,
     print_intent_summary,
     print_sources_table,
@@ -140,6 +142,11 @@ def build_parser(language: str = "bilingual") -> argparse.ArgumentParser:
         default=[],
         help=text["disable_source"],
     )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help=text["doctor"],
+    )
     return parser
 
 
@@ -154,6 +161,7 @@ def parser_text(language: str) -> dict[str, str]:
   PaperPilot config show
   PaperPilot sources list
   PaperPilot sources config core
+  PaperPilot --doctor
   PaperPilot "RNA" --auto-confirm --max-papers 50
   PaperPilot "LLM agent" --auto-confirm --github-filter required --sources cs
 
@@ -205,6 +213,7 @@ def parser_text(language: str) -> dict[str, str]:
             "sources": "检索来源 preset：auto|all|core|biomed|cs|configured，默认 auto",
             "enable_source": "额外启用某个来源，可重复传入",
             "disable_source": "禁用某个来源，可重复传入",
+            "doctor": "自检 LLM 连接和已配置 API key 的检索来源",
         }
     if language == "en":
         return {
@@ -216,6 +225,7 @@ Examples:
   PaperPilot config show
   PaperPilot sources list
   PaperPilot sources config core
+  PaperPilot --doctor
   PaperPilot "RNA" --auto-confirm --max-papers 50
   PaperPilot "LLM agent" --auto-confirm --github-filter required --sources cs
 
@@ -267,6 +277,7 @@ Outputs:
             "sources": "Search source preset: auto|all|core|biomed|cs|configured, default: auto",
             "enable_source": "Enable an additional source; repeatable",
             "disable_source": "Disable a source; repeatable",
+            "doctor": "Check LLM connectivity and configured API-key paper sources",
         }
     return {
         "description": "AI 文献检索 Agent / AI literature search agent",
@@ -277,6 +288,7 @@ Outputs:
   PaperPilot config show
   PaperPilot sources list
   PaperPilot sources config core
+  PaperPilot --doctor
   PaperPilot "RNA" --auto-confirm --max-papers 50
   PaperPilot "LLM agent" --auto-confirm --github-filter required --sources cs
   literature-agent "vision language model" --auto-confirm --no-download
@@ -329,6 +341,7 @@ Outputs:
         "sources": "检索来源 preset auto|all|core|biomed|cs|configured，默认 auto / Search source preset",
         "enable_source": "额外启用来源，可重复传入 / Enable an additional source; repeatable",
         "disable_source": "禁用来源，可重复传入 / Disable a source; repeatable",
+        "doctor": "自检 LLM 和已配置 API-key 来源 / Check LLM and configured API-key sources",
     }
 
 
@@ -338,6 +351,10 @@ def main(argv: list[str] | None = None) -> int:
         return run_config_command(argv[1:])
     if argv and argv[0] == "sources":
         return run_sources_command(argv[1:])
+    if (argv and argv[0] == "doctor") or any(arg == "--doctor" for arg in argv):
+        ensure_config_initialized()
+        defaults = build_parser().parse_args([])
+        return run_doctor_command(defaults)
     if any(arg in {"--version", "-V"} for arg in argv):
         print(f"paperpilot {__version__}")
         return 0
@@ -431,10 +448,18 @@ def run_agent(args: argparse.Namespace) -> int:
         raise
 
 
+def run_doctor_command(defaults: argparse.Namespace, *, compact: bool = False) -> int:
+    client = client_from_args(defaults)
+    report = run_doctor(client, load_app_config())
+    print_doctor_report(report, compact=compact)
+    return 0 if report.verdict == "pass" else 1
+
+
 def interactive_main(defaults: argparse.Namespace) -> int:
     if not ensure_llm_configured():
         return 1
     client = client_from_args(defaults)
+    run_doctor_command(defaults, compact=True)
     print_welcome(load_app_config(), active_model_label(), source_mode=defaults.sources)
     while True:
         try:
@@ -456,6 +481,9 @@ def interactive_main(defaults: argparse.Namespace) -> int:
             continue
         if text == "/sources":
             print_sources_table(load_app_config().sources, mode=defaults.sources)
+            continue
+        if text == "/doctor":
+            run_doctor_command(defaults)
             continue
         console.print("[cyan]🧠 正在解析需求并生成多样化检索关键词...[/cyan]")
         intent = parse_research_intent_with_llm(text, client)

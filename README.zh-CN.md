@@ -95,6 +95,7 @@ PaperPilot config import ./api.json
 PaperPilot config list
 PaperPilot config use deepseek
 PaperPilot config show
+PaperPilot --doctor
 ```
 
 配置可选来源 API Key：
@@ -108,6 +109,14 @@ PaperPilot sources test core
 ```
 
 在交互模式里也可以直接输入 `/sources` 查看来源/API 状态表。
+
+健康检查：
+
+```bash
+PaperPilot --doctor
+```
+
+doctor 会检查当前 LLM 是否能连通，以及所有已经配置 API key 的可选文献来源是否能返回测试结果。进入交互模式时也会自动执行一次简版自检；在交互界面中可以输入 `/doctor` 主动再次检查。
 
 可选来源 API Key 获取方式：
 
@@ -147,6 +156,7 @@ PaperPilot
 ```text
 /model      管理 LLM 配置
 /sources    查看检索来源和 API 状态
+/doctor     检查 LLM 和已配置来源 API
 /help       重新显示启动说明
 exit        退出
 ```

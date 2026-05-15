@@ -49,7 +49,7 @@ def print_welcome(app_config, active_model_label: str, *, source_mode: str = "au
     base_url = env_base or (profile.base_url if profile and profile.base_url else "OpenAI default")
     subtitle = (
         "AI literature review agent for search, evidence, code, PDFs, and bilingual reports.\n"
-        "[dim]Type a research request in natural language. Use /model, /sources, /help, or exit.[/dim]"
+        "[dim]Type a research request in natural language. Use /model, /sources, /doctor, /help, or exit.[/dim]"
     )
     console.print(
         Panel.fit(
@@ -75,7 +75,23 @@ def print_welcome(app_config, active_model_label: str, *, source_mode: str = "au
     )
     console.print(table)
     console.print("[bold]Example[/bold]: 调研RNA逆折叠 序列设计 近五年的文献，要求有代码仓库的")
-    console.print("[dim]Commands: /model  /sources  /help  exit[/dim]\n")
+    console.print("[dim]Commands: /model  /sources  /doctor  /help  exit[/dim]\n")
+
+
+def print_doctor_report(report, *, compact: bool = False) -> None:
+    border = {"pass": "green", "warn": "yellow", "fail": "red"}.get(report.verdict, "cyan")
+    title = f"🩺 PaperPilot Doctor: {report.verdict.upper()}"
+    if compact and report.verdict == "pass":
+        print_success("Doctor check passed")
+        return
+    table = Table(title=title, box=box.ROUNDED, header_style=f"bold {border}")
+    table.add_column("Area", style="bold")
+    table.add_column("Name")
+    table.add_column("Status")
+    table.add_column("Detail", overflow="fold")
+    for check in report.checks:
+        table.add_row(check.area, check.name, _doctor_status(check.status), check.detail)
+    console.print(table)
 
 
 def print_sources_table(source_configs: dict[str, SourceConfig] | None = None, *, mode: str = "auto") -> None:
@@ -175,6 +191,15 @@ def print_error_panel(title: str, message: str) -> None:
 
 def _status_text(ok: bool) -> str:
     return "[green]ready[/green]" if ok else "[red]missing[/red]"
+
+
+def _doctor_status(status: str) -> str:
+    return {
+        "pass": "[green]pass[/green]",
+        "warn": "[yellow]warn[/yellow]",
+        "fail": "[red]fail[/red]",
+        "skip": "[dim]skip[/dim]",
+    }.get(status, status)
 
 
 def _stage_icon(name: str) -> str:

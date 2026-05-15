@@ -23,6 +23,7 @@ from literature_agent.config import (
     save_app_config,
     save_user_config,
 )
+from literature_agent.doctor import run_doctor
 from literature_agent.cli import build_parser
 from literature_agent.cli import main as cli_main
 from literature_agent.corpus import corpus_items_from_papers, enhanced_deduplicate, split_corpus
@@ -333,6 +334,68 @@ Paragraph.
             self.assertEqual(sources.returncode, 0, sources.stderr)
             self.assertTrue(config_path.exists())
             self.assertIn("core              disabled requires-key no-key", sources.stdout)
+
+    def test_doctor_reports_missing_llm_and_skips_unconfigured_sources(self):
+        class FakeClient:
+            available = False
+            model = "fake"
+
+        report = run_doctor(FakeClient(), AppConfig())
+
+        self.assertEqual(report.verdict, "fail")
+        self.assertTrue(any(check.area == "LLM" and check.status == "fail" for check in report.checks))
+        self.assertTrue(any(check.name == "optional APIs" and check.status == "skip" for check in report.checks))
+
+    def test_doctor_checks_configured_source_without_exposing_key(self):
+        class FakeClient:
+            available = True
+            model = "fake"
+
+            def text(self, *args, **kwargs):
+                return "OK"
+
+        import literature_agent.doctor as module
+
+        original = module.search_one_source
+        try:
+            module.search_one_source = lambda *args, **kwargs: [Paper(title="RNA paper")]
+            report = run_doctor(
+                FakeClient(),
+                AppConfig(sources={"core": SourceConfig(api_key="secret-core-key")}),
+            )
+        finally:
+            module.search_one_source = original
+
+        self.assertEqual(report.verdict, "pass")
+        rendered = json.dumps([check.__dict__ for check in report.checks])
+        self.assertNotIn("secret-core-key", rendered)
+        self.assertTrue(any(check.name == "CORE" and check.status == "pass" for check in report.checks))
+
+    def test_cli_doctor_initializes_config_and_returns_failure_without_llm(self):
+        with TemporaryDirectory() as tmp:
+            repo = Path(__file__).resolve().parents[1]
+            env = {
+                **os.environ,
+                "PAPERPILOT_HOME": tmp,
+                "PYTHONPATH": str(repo),
+                "OPENAI_API_KEY": "",
+                "OPENAI_BASE_URL": "",
+                "OPENAI_MODEL": "",
+            }
+            result = subprocess.run(
+                [sys.executable, "-m", "literature_agent.cli", "--doctor"],
+                cwd=tmp,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertTrue((Path(tmp) / "config.json").exists())
+            self.assertIn("PaperPilot Doctor", result.stdout)
+            self.assertIn("fail", result.stdout.lower())
 
     def test_rich_source_summary_counts_configured_optional_sources(self):
         summary = source_status_summary({"core": SourceConfig(api_key="core-key")}, mode="auto")

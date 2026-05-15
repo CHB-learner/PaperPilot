@@ -94,6 +94,7 @@ PaperPilot config import ./api.json
 PaperPilot config list
 PaperPilot config use deepseek
 PaperPilot config show
+PaperPilot --doctor
 ```
 
 Optional source API keys:
@@ -107,6 +108,14 @@ PaperPilot sources test core
 ```
 
 Inside interactive mode, use `/sources` to view the same source/API status table without leaving the session.
+
+Health checks:
+
+```bash
+PaperPilot --doctor
+```
+
+The doctor command checks the active LLM connection and any optional paper sources that have API keys configured. Interactive mode also runs a compact doctor check on startup; use `/doctor` inside the shell to run it again.
 
 Where to get optional source API keys:
 
@@ -146,6 +155,7 @@ The interactive shell shows the active LLM profile, model API status, free-sourc
 ```text
 /model      manage LLM profiles
 /sources    inspect enabled and optional search sources
+/doctor     check LLM and configured source APIs
 /help       show the startup guide again
 exit        quit
 ```
