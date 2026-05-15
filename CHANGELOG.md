@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.5.2] - 2026-05-15
+
+### Changed
+- Updated README, Chinese README, and project homepage wording to describe PaperPilot as a broader scholarly literature review agent for AI, biomedicine, and AI for Science.
+
 ## [1.5.1] - 2026-05-15
 
 ### Fixed

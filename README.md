@@ -11,10 +11,10 @@
 [English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/)
 
 <p align="center">
-  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
+  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - scholarly literature review agent" width="100%">
 </p>
 
-PaperPilot is a **CLI research agent for AI-related literature review**.  
+PaperPilot is a **CLI research agent for scholarly literature review** across AI, biomedicine, and AI for Science.  
 It turns one user request into a traceable, evidence-based research workflow and generates bilingual reports (`zh/en`) in Markdown, HTML, and PDF.
 
 ## ✨ What PaperPilot does

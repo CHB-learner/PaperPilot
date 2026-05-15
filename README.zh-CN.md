@@ -11,10 +11,10 @@
 [English](README.md) | [中文](README.zh-CN.md) | [项目主页](https://chb-learner.github.io/PaperPilot/)
 
 <p align="center">
-  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
+  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - scholarly literature review agent" width="100%">
 </p>
 
-PaperPilot 是一个面向 AI 研究场景的 **CLI 文献检索与综述 Agent**。  
+PaperPilot 是一个面向 AI、生医与 AI for Science 场景的 **CLI 科研文献检索与综述 Agent**。  
 它把自然语言研究需求，转化为可追踪、可复现的工作流，并输出中文/英文一致的三端报告（Markdown、HTML、PDF）。
 
 该项目是文件系统驱动的研究工作流，而不是聊天机器人：每次运行都会生成独立的 task 文件夹，完整保留状态、事件日志和中间产物。
