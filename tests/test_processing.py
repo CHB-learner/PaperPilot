@@ -36,7 +36,7 @@ from literature_agent.protocol import build_protocol
 from literature_agent.processing import apply_github_filter, deduplicate, resolve_code_links
 from literature_agent.query import heuristic_understanding
 from literature_agent.report import build_canonical_report, markdown_report_to_html, render_html_reports, render_reports
-from literature_agent.searchers import search_dblp, search_europe_pmc, search_pubmed
+from literature_agent.searchers import search_dblp, search_deepxiv, search_europe_pmc, search_pubmed
 from literature_agent.sources import SourceConfig, resolve_enabled_sources
 from literature_agent.synthesis import build_literature_matrix, build_synthesis
 from literature_agent.ui import console as rich_console
@@ -215,7 +215,7 @@ Paragraph.
         self.assertIn("default", config.profiles)
         self.assertEqual(config.profiles["default"].model, "gpt-5.2")
         self.assertEqual(config.profiles["default"].api_key, "")
-        self.assertEqual(set(config.sources), {"core", "lens", "ieee", "springer", "elsevier", "dimensions"})
+        self.assertEqual(set(config.sources), {"core", "lens", "ieee", "springer", "elsevier", "dimensions", "deepxiv"})
         self.assertTrue(all(source.api_key == "" for source in config.sources.values()))
         self.assertTrue(all(source.enabled is None for source in config.sources.values()))
 
@@ -288,6 +288,12 @@ Paragraph.
         self.assertNotIn("core", resolve_enabled_sources("all"))
         enabled = resolve_enabled_sources("all", {"core": SourceConfig(api_key="core-key")})
         self.assertIn("core", enabled)
+
+    def test_deepxiv_source_requires_configuration_and_supports_domain_presets(self):
+        self.assertNotIn("deepxiv", resolve_enabled_sources("auto"))
+        enabled = set(resolve_enabled_sources("biomed", {"deepxiv": SourceConfig(api_key="deepxiv-key")}))
+
+        self.assertIn("deepxiv", enabled)
 
     def test_cli_config_path_initializes_template_under_paperpilot_home(self):
         with TemporaryDirectory() as tmp:
@@ -523,6 +529,43 @@ Paragraph.
             self.assertEqual(papers[0].raw["identifiers"]["dblp_key"], "conf/acl/X")
         finally:
             module.request_json = original_json
+
+    def test_parse_deepxiv_response(self):
+        import literature_agent.searchers as module
+
+        payload = {
+            "status": "success",
+            "result": [
+                {
+                    "arxiv_id": "2603.00084",
+                    "score": 0.94,
+                    "title": "DeepXiv-SDK: An Agentic Data Interface for Scientific Literature",
+                    "abstract": "An agentic data interface for scientific literature.",
+                    "authors": [{"name": "Jane Doe"}],
+                    "url": "https://arxiv.org/abs/2603.00084",
+                    "date": "2026-03-01T00:00:00Z",
+                    "citation_count": 3,
+                    "categories": ["cs.DL"],
+                }
+            ],
+        }
+        original_sdk = module._deepxiv_sdk_search
+        original_rest = module._deepxiv_rest_search
+        try:
+            module._deepxiv_sdk_search = lambda *args, **kwargs: payload if args[3] == "arxiv" else {"result": []}
+            module._deepxiv_rest_search = lambda *args, **kwargs: {}
+
+            papers = search_deepxiv("agentic data interface", 3, 2021, SourceConfig(api_key="deepxiv-key"))
+
+            self.assertEqual(len(papers), 1)
+            self.assertEqual(papers[0].source, "deepxiv")
+            self.assertEqual(papers[0].arxiv_id, "2603.00084")
+            self.assertEqual(papers[0].pdf_url, "https://arxiv.org/pdf/2603.00084")
+            self.assertEqual(papers[0].citation_count, 3)
+            self.assertEqual(papers[0].raw["deepxiv_source"], "arxiv")
+        finally:
+            module._deepxiv_sdk_search = original_sdk
+            module._deepxiv_rest_search = original_rest
 
     def test_mask_secret(self):
         self.assertEqual(mask_secret(None), "(not set)")

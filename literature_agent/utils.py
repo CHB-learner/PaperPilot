@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 
-USER_AGENT = "paperpilot/1.3.3 (mailto:research@example.com)"
+USER_AGENT = "paperpilot/1.4.0 (mailto:research@example.com)"
 
 
 @dataclass

@@ -614,6 +614,142 @@ def search_dimensions(query: str, limit: int, since_year: int | None, source_con
     return [p for p in papers if p.title]
 
 
+def search_deepxiv(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    api_key = configured_api_key("deepxiv", source_config)
+    if not api_key:
+        return []
+    base_url = (source_config.base_url if source_config and source_config.base_url else "https://data.rag.ac.cn").rstrip("/")
+    source_names = ["arxiv", "biorxiv", "medrxiv"]
+    per_source_limit = max(1, min(limit, (limit + len(source_names) - 1) // len(source_names)))
+    papers: list[Paper] = []
+    for deepxiv_source in source_names:
+        data = safe_fetch(
+            lambda source=deepxiv_source: _deepxiv_sdk_search(
+                query,
+                per_source_limit,
+                since_year,
+                source,
+                api_key,
+                base_url,
+            ),
+            {},
+        )
+        if not data:
+            data = safe_fetch(
+                lambda source=deepxiv_source: _deepxiv_rest_search(
+                    query,
+                    per_source_limit,
+                    since_year,
+                    source,
+                    api_key,
+                    base_url,
+                ),
+                {},
+            )
+        papers.extend(_deepxiv_papers_from_response(data, query, deepxiv_source))
+    return [p for p in papers if p.title][: max(1, limit)]
+
+
+def _deepxiv_sdk_search(
+    query: str,
+    limit: int,
+    since_year: int | None,
+    source: str,
+    api_key: str,
+    base_url: str,
+) -> dict:
+    from deepxiv_sdk import Reader
+
+    reader = Reader(token=api_key, base_url=base_url, timeout=18, max_retries=1)
+    kwargs = {"date_from": f"{since_year}-01-01"} if since_year else {}
+    return reader.search(query, size=limit, source=source, use_fine_rerank=True, **kwargs)
+
+
+def _deepxiv_rest_search(
+    query: str,
+    limit: int,
+    since_year: int | None,
+    source: str,
+    api_key: str,
+    base_url: str,
+) -> dict:
+    params = {
+        "type": "retrieve",
+        "query": query,
+        "source": source,
+        "top_k": limit,
+        "use_fine_rerank": "true",
+    }
+    if since_year:
+        params["date_search_type"] = "after"
+        params["date_str"] = f"{since_year}-01-01"
+    url = f"{base_url}/arxiv/?" + encode_query(params)
+    return request_json(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=18)
+
+
+def _deepxiv_papers_from_response(data: dict, query: str, deepxiv_source: str) -> list[Paper]:
+    if not isinstance(data, dict):
+        return []
+    results = data.get("result") or data.get("results") or []
+    if not isinstance(results, list):
+        return []
+    papers: list[Paper] = []
+    id_field = f"{deepxiv_source}_id"
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        paper_id = item.get(id_field) or item.get("arxiv_id") or item.get("id")
+        doi = item.get("doi")
+        if not doi and deepxiv_source in {"biorxiv", "medrxiv"} and isinstance(paper_id, str) and paper_id.startswith("10."):
+            doi = paper_id
+        url = item.get("url") or item.get("paper_url")
+        if not url and deepxiv_source == "arxiv" and paper_id:
+            url = f"https://arxiv.org/abs/{paper_id}"
+        authors = _deepxiv_authors(item.get("authors"))
+        year = _safe_int(str(item.get("date") or item.get("publish_at") or "")[:4])
+        pdf_url = item.get("pdf_url") or item.get("src_url")
+        if not pdf_url and deepxiv_source == "arxiv" and paper_id:
+            pdf_url = f"https://arxiv.org/pdf/{paper_id}"
+        papers.append(
+            Paper(
+                title=compact_text(item.get("title")),
+                authors=authors,
+                year=year,
+                venue=f"DeepXiv {deepxiv_source}",
+                abstract=compact_text(item.get("abstract") or item.get("tldr")),
+                doi=doi,
+                arxiv_id=str(paper_id) if deepxiv_source == "arxiv" and paper_id else None,
+                url=url,
+                pdf_url=pdf_url,
+                citation_count=_safe_int(item.get("citation_count") or item.get("citations")),
+                source="deepxiv",
+                sources=["deepxiv"],
+                raw={
+                    "query": query,
+                    "deepxiv_source": deepxiv_source,
+                    "identifiers": {id_field: paper_id} if paper_id else {},
+                    "score": item.get("score"),
+                    "categories": item.get("categories"),
+                },
+            )
+        )
+    return [p for p in papers if p.title]
+
+
+def _deepxiv_authors(value) -> list[str]:
+    if isinstance(value, list):
+        authors = []
+        for item in value:
+            if isinstance(item, dict) and item.get("name"):
+                authors.append(item["name"])
+            elif isinstance(item, str):
+                authors.append(item)
+        return authors
+    if isinstance(value, str):
+        return [part.strip() for part in re.split(r";|,", value) if part.strip()]
+    return []
+
+
 def _xml_text(entry: ET.Element, path: str, ns: dict[str, str]) -> str:
     value = entry.findtext(path, default="", namespaces=ns)
     return value or ""
@@ -756,6 +892,7 @@ SEARCHERS = {
     "springer": search_springer,
     "elsevier": search_elsevier,
     "dimensions": search_dimensions,
+    "deepxiv": search_deepxiv,
 }
 
 

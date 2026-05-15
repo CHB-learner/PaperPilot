@@ -569,7 +569,7 @@
     <header>
       <div>
         <h1>PaperPilot v1.3 Agent 流程图</h1>
-        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.3 增加 Rich 彩色终端、启动页模型/来源状态、交互式 /sources 和更清晰的阶段进度输出。</p>
+        <p class="subtitle">从自然语言调研需求到研究协议、分层 Source Registry、可审计语料、证据验证、质量门和中英文 APA 风格报告。v1.4 增加 DeepXiv / Agentic Data 检索来源，并保留 Rich 彩色终端、启动页模型/来源状态、交互式 /sources 和阶段进度输出。</p>
         <div class="version">
           <span class="pill">v1.3 architecture</span>
           <span class="pill">State-machine workflow</span>
@@ -663,7 +663,7 @@
               <li>arXiv / Semantic Scholar / OpenAlex</li>
               <li>Crossref / OpenReview / DBLP / ACL</li>
               <li>PubMed / Europe PMC / bioRxiv / medRxiv</li>
-              <li>CORE / Lens / IEEE / Springer / Elsevier / Dimensions</li>
+              <li>DeepXiv / CORE / Lens / IEEE / Springer / Elsevier / Dimensions</li>
               <li><code>source_diagnostics.json</code></li>
               <li><code>registries.json</code></li>
               <li><code>user_corpus_log.json</code></li>
@@ -815,8 +815,8 @@
               <h3>Search Tools</h3>
               <p>Source Registry、多源 API 与本地语料共同进入候选池。</p>
               <ul>
-                <li>AI/CS: arXiv / OpenReview / DBLP / ACL</li>
-                <li>BioMed: PubMed / Europe PMC / bioRxiv / medRxiv</li>
+                <li>AI/CS: arXiv / OpenReview / DBLP / ACL / DeepXiv</li>
+                <li>BioMed: PubMed / Europe PMC / bioRxiv / medRxiv / DeepXiv</li>
                 <li>General: S2 / OpenAlex / Crossref / optional-key sources</li>
                 <li><code>source_diagnostics.json</code></li>
                 <li><code>user_corpus_log.json</code></li>
@@ -980,7 +980,7 @@
         <div class="code">prompt_manifest.json + registries.json + events.jsonl</div>
         <ul>
           <li>Prompt Registry 管理 QueryUnderstanding、Planner、Protocol、Screening、Synthesis、Reflection、Abstract。</li>
-          <li>Source Registry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology 以及 optional-key sources。</li>
+          <li>Source Registry 记录 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology、DeepXiv / Agentic Data 以及 optional-key sources。</li>
           <li>ToolRegistry 记录 GitHub、PDF、fulltext、report renderer 等非搜索工具。</li>
           <li>CapabilityRegistry 预留 literature_review、systematic_review、code_reproducibility_review 和 topic_monitoring。</li>
         </ul>

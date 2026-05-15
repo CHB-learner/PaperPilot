@@ -23,7 +23,7 @@ It is designed as a file-system based research workflow, not a chatbot. Each run
 
 - Natural-language research intake with LLM-assisted query understanding.
 - Rich interactive CLI with startup model/source status, `/model`, `/sources`, and structured confirmation panels.
-- Layered Source Registry with arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, ACL Anthology, and optional API-key sources.
+- Layered Source Registry with arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, ACL Anthology, and optional API-key sources including DeepXiv / Agentic Data.
 - Local corpus import with `--user-corpus` for PDF, BibTeX, RIS, Markdown, and text files.
 - Research protocol generation with inclusion/exclusion criteria and negative keywords.
 - Corpus normalization, DOI/arXiv/title-similarity deduplication, ranking, and relevance screening.
@@ -79,7 +79,8 @@ On first run, PaperPilot creates an editable template at `~/.paperpilot/config.j
     "ieee": {"enabled": null, "api_key": "", "base_url": ""},
     "springer": {"enabled": null, "api_key": "", "base_url": ""},
     "elsevier": {"enabled": null, "api_key": "", "base_url": ""},
-    "dimensions": {"enabled": null, "api_key": "", "base_url": ""}
+    "dimensions": {"enabled": null, "api_key": "", "base_url": ""},
+    "deepxiv": {"enabled": null, "api_key": "", "base_url": ""}
   }
 }
 ```
@@ -102,6 +103,7 @@ Optional source API keys:
 ```bash
 PaperPilot sources list
 PaperPilot sources config core
+PaperPilot sources config deepxiv
 PaperPilot sources config lens
 PaperPilot sources enable core
 PaperPilot sources test core
@@ -127,6 +129,7 @@ Where to get optional source API keys:
 | Springer Nature | Use the [Springer Nature developer portal](https://dev.springernature.com/) for API documentation and keys. |
 | Elsevier / Scopus | Start from the [Elsevier Developer Portal](https://dev.elsevier.com/) and the [Scopus APIs getting started guide](https://www.elsevier.support/dataasaservice/answer/getting-started-guide-for-scopus-apis). |
 | Dimensions | See [Dimensions API access](https://docs.dimensions.ai/dsl/api.html). Dimensions API access usually requires an institutional subscription or eligible research access. |
+| DeepXiv / Agentic Data | Register from the [Agentic Data API docs](https://data.rag.ac.cn/api/docs). The service documents token auth and 10,000 free daily requests for registered tokens. PaperPilot uses the `deepxiv-sdk` package and falls back to the REST API if needed. |
 
 Configuration is stored in:
 
@@ -210,7 +213,7 @@ flowchart LR
   P --> QA[Query Understanding Agent]
   QA --> PL[Planner Agent]
   PL --> RP[Research Protocol Agent]
-  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL]
+  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL<br/>DeepXiv / CORE / Lens / IEEE / Springer / Scopus / Dimensions]
   U --> LC[Local Corpus Import]
   LC --> CB[Corpus Builder]
   ST --> CB
@@ -225,7 +228,7 @@ flowchart LR
   CR --> OUT[ZH/EN Markdown<br/>ZH/EN HTML<br/>ZH/EN PDF]
 ```
 
-Default free sources include arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, and ACL Anthology. Optional API-key sources include CORE, Lens.org, IEEE Xplore, Springer Nature, Elsevier/Scopus, and Dimensions.
+Default free sources include arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, and ACL Anthology. Optional API-key sources include DeepXiv / Agentic Data, CORE, Lens.org, IEEE Xplore, Springer Nature, Elsevier/Scopus, and Dimensions.
 
 The repository also includes an HTML architecture overview:
 

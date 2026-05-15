@@ -23,7 +23,7 @@ PaperPilot 是一个面向 AI 相关方向的命令行文献调研 Agent。你�
 
 - 支持自然语言输入研究需求，由 LLM 辅助理解关键词和研究范围。
 - 基于 Rich 的彩色交互式 CLI：启动页展示当前模型、来源/API 状态，并支持 `/model`、`/sources` 和结构化确认面板。
-- 分层 Source Registry：默认覆盖 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology，并支持需要 API key 的扩展来源。
+- 分层 Source Registry：默认覆盖 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology，并支持 DeepXiv / Agentic Data 等需要 API key 的扩展来源。
 - 支持 `--user-corpus` 导入本地 PDF、BibTeX、RIS、Markdown、文本文件作为用户语料。
 - 自动生成研究协议，包括研究问题、纳入/排除标准、时间范围和负面关键词。
 - 统一论文模型，支持 DOI、arXiv、标题相似度等多级去重。
@@ -80,7 +80,8 @@ PaperPilot
     "ieee": {"enabled": null, "api_key": "", "base_url": ""},
     "springer": {"enabled": null, "api_key": "", "base_url": ""},
     "elsevier": {"enabled": null, "api_key": "", "base_url": ""},
-    "dimensions": {"enabled": null, "api_key": "", "base_url": ""}
+    "dimensions": {"enabled": null, "api_key": "", "base_url": ""},
+    "deepxiv": {"enabled": null, "api_key": "", "base_url": ""}
   }
 }
 ```
@@ -103,6 +104,7 @@ PaperPilot --doctor
 ```bash
 PaperPilot sources list
 PaperPilot sources config core
+PaperPilot sources config deepxiv
 PaperPilot sources config lens
 PaperPilot sources enable core
 PaperPilot sources test core
@@ -128,6 +130,7 @@ doctor 会检查当前 LLM 是否能连通，以及所有已经配置 API key �
 | Springer Nature | 访问 [Springer Nature developer portal](https://dev.springernature.com/) 查看 API 文档并申请 key。 |
 | Elsevier / Scopus | 从 [Elsevier Developer Portal](https://dev.elsevier.com/) 和 [Scopus APIs getting started guide](https://www.elsevier.support/dataasaservice/answer/getting-started-guide-for-scopus-apis) 开始。 |
 | Dimensions | 参考 [Dimensions API access](https://docs.dimensions.ai/dsl/api.html)。Dimensions API 通常需要机构订阅或符合条件的研究访问。 |
+| DeepXiv / Agentic Data | 从 [Agentic Data API docs](https://data.rag.ac.cn/api/docs) 注册获取 token。文档说明支持 token 鉴权，注册 token 每日 10,000 次免费请求。PaperPilot 会优先使用 `deepxiv-sdk`，必要时 fallback 到 REST API。 |
 
 配置会缓存到：
 
@@ -189,7 +192,7 @@ PaperPilot "RNA inverse folding sequence design" \
   --user-corpus references.bib
 ```
 
-默认免 key 来源包括 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP 和 ACL Anthology。可选 API-key 来源包括 CORE、Lens.org、IEEE Xplore、Springer Nature、Elsevier/Scopus 和 Dimensions。
+默认免 key 来源包括 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP 和 ACL Anthology。可选 API-key 来源包括 DeepXiv / Agentic Data、CORE、Lens.org、IEEE Xplore、Springer Nature、Elsevier/Scopus 和 Dimensions。
 
 跳过 PDF 下载：
 
@@ -219,7 +222,7 @@ flowchart LR
   P --> QA[Query Understanding Agent]
   QA --> PL[Planner Agent]
   PL --> RP[Research Protocol Agent]
-  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL]
+  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL<br/>DeepXiv / CORE / Lens / IEEE / Springer / Scopus / Dimensions]
   U --> LC[Local Corpus Import]
   LC --> CB[Corpus Builder]
   ST --> CB

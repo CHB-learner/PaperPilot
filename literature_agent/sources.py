@@ -57,6 +57,7 @@ SOURCE_SPECS: dict[str, SourceSpec] = {
     "springer": SourceSpec("springer", "Springer Nature", "general", True, False, ["configured"], "API key required", "high", "medium", "medium", "SPRINGER_API_KEY"),
     "elsevier": SourceSpec("elsevier", "Elsevier / Scopus", "general", True, False, ["configured"], "API key required", "high", "low", "high", "ELSEVIER_API_KEY"),
     "dimensions": SourceSpec("dimensions", "Dimensions", "general", True, False, ["configured"], "API key required", "high", "low", "high", "DIMENSIONS_API_KEY"),
+    "deepxiv": SourceSpec("deepxiv", "DeepXiv / Agentic Data", "general", True, False, ["configured", "core", "cs", "biomed"], "API token required; 10,000 free daily requests after registration", "high", "high", "medium", "DEEPXIV_TOKEN"),
 }
 
 
