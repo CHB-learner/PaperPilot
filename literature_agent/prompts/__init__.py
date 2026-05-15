@@ -46,14 +46,17 @@ PROMPTS: dict[str, PromptSpec] = {
             "rationale",
         ),
         template="""
-Analyze this literature-search keyword for an AI-related paper search agent: $keyword
+Analyze this literature-search keyword for a scholarly literature review agent: $keyword
 
 Return JSON with these keys:
 original_keyword, recommended_query, possible_interpretations, included_scope,
 excluded_scope, search_terms, needs_confirmation, rationale.
 
-If the keyword is broad or ambiguous, set needs_confirmation=true. Prefer AI-related
-interpretations but mention important non-AI ambiguity.
+Preserve the user's domain and scope. Do not silently narrow a general biomedical,
+clinical, wet-lab, or engineering topic into an AI-only topic unless the user explicitly
+mentions AI, machine learning, deep learning, foundation models, or computational modeling.
+If the keyword is broad or ambiguous, set needs_confirmation=true and list the plausible
+interpretations instead of choosing a narrow one.
 """,
     ),
     "planner": PromptSpec(
@@ -104,6 +107,8 @@ Search plan:
 $plan
 
 The protocol must be specific enough to screen papers automatically.
+Preserve the user's requested scope. Do not add an AI/ML-only inclusion criterion unless
+the query understanding or search plan explicitly asks for AI/ML/computational methods.
 Return JSON with keys:
 research_question, scope, inclusion_criteria, exclusion_criteria,
 negative_keywords, search_sources, notes.

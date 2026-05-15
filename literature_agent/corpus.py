@@ -140,16 +140,23 @@ def _merge_paper(current: Paper, paper: Paper) -> None:
 
 def classify_paper(paper: Paper, plan: SearchPlan, protocol: ResearchProtocol) -> InclusionDecision:
     text = _paper_text(paper)
-    query_terms = _query_terms(plan)
-    core_hits = sorted(term for term in CORE_TERMS | set(query_terms) if term and term in text)
-    adjacent_hits = sorted(term for term in ADJACENT_TERMS if term in text)
+    phrase_terms = set(_query_terms(plan))
+    primary_tokens = _topic_tokens([plan.recommended_query])
+    topic_tokens = _topic_tokens([plan.recommended_query, *plan.search_queries, *plan.subtopics])
+    static_core_terms = CORE_TERMS if _is_rna_task(plan) else set()
+    static_adjacent_terms = ADJACENT_TERMS if _is_rna_task(plan) else set()
+    phrase_hits = sorted(term for term in static_core_terms | phrase_terms if term and term in text)
+    primary_hits = sorted(token for token in primary_tokens if token in text)
+    token_hits = sorted(token for token in topic_tokens if token in text)
+    core_hits = sorted(set(phrase_hits + primary_hits + token_hits))
+    adjacent_hits = sorted(term for term in static_adjacent_terms if term in text)
     negative_hits = sorted(term for term in protocol.negative_keywords if term.lower() in text)
 
     score = 0.0
-    score += min(0.7, 0.18 * len(core_hits))
+    score += min(0.5, 0.2 * len(phrase_hits))
+    score += min(0.3, 0.15 * len(primary_hits))
+    score += min(0.25, 0.05 * len(token_hits))
     score += min(0.2, 0.06 * len(adjacent_hits))
-    if "rna" in text:
-        score += 0.1
     if paper.has_code:
         score += 0.05
     if paper.abstract:
@@ -161,13 +168,13 @@ def classify_paper(paper: Paper, plan: SearchPlan, protocol: ResearchProtocol) -
     if any(marker in title for marker in ["autodock vina", "rna seqc", "rtm align", "prolif", "sharing biological data"]):
         label = "exclude"
         reason = "Title matches a known adjacent or off-topic tool category for this task."
-    elif negative_hits and len(core_hits) < 2:
+    elif negative_hits and not phrase_hits and len(primary_hits) < 2:
         label = "exclude"
         reason = "Negative topic signals dominate and task-specific evidence is weak."
-    elif score >= 0.55 and core_hits:
+    elif score >= 0.5 and (phrase_hits or primary_hits or len(token_hits) >= 2):
         label = "core"
-        reason = "The paper directly matches task-specific design or inverse-folding terminology."
-    elif score >= 0.32 and (core_hits or adjacent_hits):
+        reason = "The paper directly matches the requested topic terminology."
+    elif score >= 0.24 and (primary_hits or token_hits or adjacent_hits):
         label = "adjacent"
         reason = "The paper is related but not central enough for the core synthesis."
     else:
@@ -292,6 +299,72 @@ def _query_terms(plan: SearchPlan) -> list[str]:
             if len(phrase.split()) >= 2:
                 terms.add(phrase)
     return sorted(terms)
+
+
+def _is_rna_task(plan: SearchPlan) -> bool:
+    task_text = " ".join([plan.recommended_query, *plan.search_queries, *plan.subtopics]).lower()
+    return bool(re.search(r"\brna\b|ribonucleic", task_text))
+
+
+def _topic_tokens(values: list[str]) -> list[str]:
+    stop = {
+        "about",
+        "across",
+        "analysis",
+        "application",
+        "applications",
+        "approach",
+        "approaches",
+        "and",
+        "based",
+        "benchmark",
+        "benchmarks",
+        "classic",
+        "code",
+        "data",
+        "dataset",
+        "datasets",
+        "development",
+        "different",
+        "english",
+        "evaluation",
+        "for",
+        "framework",
+        "general",
+        "method",
+        "methods",
+        "model",
+        "models",
+        "paper",
+        "papers",
+        "protocol",
+        "protocols",
+        "recent",
+        "research",
+        "review",
+        "reviews",
+        "study",
+        "studies",
+        "survey",
+        "surveys",
+        "system",
+        "systems",
+        "task",
+        "tasks",
+        "technique",
+        "techniques",
+        "using",
+        "with",
+        "without",
+    }
+    tokens: list[str] = []
+    for value in values:
+        for token in re.findall(r"[a-zA-Z][a-zA-Z0-9-]{2,}", value.lower()):
+            token = token.strip("-")
+            if len(token) < 3 or token in stop:
+                continue
+            tokens.append(token)
+    return list(dict.fromkeys(tokens))[:24]
 
 
 def _important_tokens(title: str) -> list[str]:

@@ -814,6 +814,46 @@ Paragraph.
         self.assertEqual(labels[papers[1].title], "exclude")
         self.assertEqual(labels[papers[2].title], "exclude")
 
+    def test_v1_screening_adapts_to_non_rna_biomed_topic(self):
+        understanding = heuristic_understanding("organoid research methods")
+        plan = make_plan(
+            understanding,
+            max_papers=50,
+            since_year=2021,
+            client=None,
+            seed_search_terms=[
+                "organoid",
+                "organoid culture method",
+                "organoid review",
+                "patient-derived organoid methodology",
+            ],
+        )
+        protocol = build_protocol(understanding, plan, "any", client=None)
+        papers = [
+            Paper(
+                title="Human organoid culture methods for disease modeling",
+                abstract="This review discusses organoid culture methods and patient-derived organoid models.",
+                year=2024,
+            ),
+            Paper(
+                title="D-CryptO: Deep learning-based analysis of colon organoid morphology from brightfield images",
+                abstract="Deep learning analysis of colon organoid morphology.",
+                year=2022,
+            ),
+            Paper(
+                title="RiboDiffusion: tertiary structure-based RNA inverse folding with generative diffusion models",
+                abstract="RNA inverse folding and sequence design.",
+                year=2024,
+            ),
+        ]
+
+        items = corpus_items_from_papers(papers, plan, protocol, client=None)
+        labels = {item.paper.title: item.inclusion.label for item in items}
+
+        self.assertEqual(labels[papers[0].title], "core")
+        self.assertIn(labels[papers[1].title], {"core", "adjacent"})
+        self.assertEqual(labels[papers[2].title], "exclude")
+
     def test_v1_quality_gate_and_bilingual_report_share_same_paper_list(self):
         understanding = heuristic_understanding("RNA inverse folding sequence design")
         plan = make_plan(understanding, max_papers=10, since_year=2021, client=None)

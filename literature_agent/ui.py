@@ -10,6 +10,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from . import __version__
 from .sources import SOURCE_SPECS, SourceConfig, configured_api_key, resolve_enabled_sources
 
 
@@ -48,12 +49,12 @@ def print_welcome(app_config, active_model_label: str, *, source_mode: str = "au
     key_status = "configured" if env_key or (profile and profile.api_key) else "missing"
     base_url = env_base or (profile.base_url if profile and profile.base_url else "OpenAI default")
     subtitle = (
-        "AI literature review agent for search, evidence, code, PDFs, and bilingual reports.\n"
+        "Scholarly literature review agent for search, evidence, code, PDFs, bilingual reports, and Obsidian Wiki.\n"
         "[dim]Type a research request in natural language. Use /model, /sources, /doctor, /help, or exit.[/dim]"
     )
     console.print(
         Panel.fit(
-            f"[bold cyan]PaperPilot[/bold cyan] [dim]v1.3[/dim]\n{subtitle}",
+            f"[bold cyan]PaperPilot[/bold cyan] [dim]v{__version__}[/dim]\n{subtitle}",
             title="✈️  Research Copilot",
             border_style="cyan",
             box=box.ROUNDED,

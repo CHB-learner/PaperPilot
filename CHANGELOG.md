@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.1] - 2026-05-15
+
+### Fixed
+- Fixed non-RNA / non-AI biomedical topics being over-screened to zero papers.
+- Fixed query understanding prompts that could silently narrow broad biomedical requests into AI-only protocols.
+- Replaced the RNA-specific screening gate with topic-adaptive relevance scoring while preserving RNA inverse-folding exclusions.
+- Fixed the interactive welcome banner to show the package version dynamically instead of stale `v1.3`.
+
 ## [1.5.0] - 2026-05-15
 
 ### Added
