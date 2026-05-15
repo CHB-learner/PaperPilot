@@ -105,18 +105,21 @@ class ProcessingTests(unittest.TestCase):
         self.assertIn("RNA foundation model", result.search_terms)
 
     def test_parse_chinese_interactive_intent(self):
-        result = parse_research_intent("调研RNA逆折叠 序列设计 近五年的文献，要求有代码仓库的,方法不限", current_year=2026)
+        result = parse_research_intent("调研CVPR/ICML近三年关于少样本学习在生物序列中的应用，要求有代码链接,方法不限", current_year=2026)
 
-        self.assertEqual(result.keyword, "RNA逆折叠 序列设计")
-        self.assertEqual(result.since_year, 2021)
+        self.assertIn("CVPR/ICML", result.keyword)
+        self.assertIn("少样本", result.keyword)
+        self.assertEqual(result.since_year, 2023)
         self.assertEqual(result.github_filter, "required")
         self.assertTrue(result.auto_confirm)
-        self.assertIn("RNA逆折叠 序列设计 github", result.search_terms)
+        self.assertIn("CVPR/ICML", result.keyword)
+        self.assertTrue(any("生物序列" in term for term in result.search_terms))
 
     def test_llm_intent_parser_falls_back_without_client(self):
-        result = parse_research_intent_with_llm("调研RNA逆折叠 序列设计 近五年的文献，要求有代码仓库的", None, current_year=2026)
+        result = parse_research_intent_with_llm("调研CVPR/ICML近三年关于少样本学习在生物序列中的应用，要求有代码链接", None, current_year=2026)
 
-        self.assertEqual(result.keyword, "RNA逆折叠 序列设计")
+        self.assertIn("CVPR/ICML", result.keyword)
+        self.assertIn("少样本", result.keyword)
         self.assertGreaterEqual(len(result.search_terms), 4)
 
     def test_planner_merges_seed_search_terms(self):

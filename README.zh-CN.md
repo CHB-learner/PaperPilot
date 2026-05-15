@@ -1,42 +1,83 @@
 # PaperPilot
 
+[![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
+[![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=Python)](https://pypi.org/project/paperpilot/)
+[![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/CHB-learner/PaperPilot?color=7c3aed&label=Release)](https://github.com/CHB-learner/PaperPilot/releases)
+[![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)](https://github.com/CHB-learner/PaperPilot)
+[![Reports](https://img.shields.io/badge/Reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)](https://pypi.org/project/paperpilot/)
+[![Workflow](https://img.shields.io/badge/Workflow-evidence--grounded-0891b2)](https://github.com/CHB-learner/PaperPilot)
+
 [English](README.md) | [中文](README.zh-CN.md) | [项目主页](https://chb-learner.github.io/PaperPilot/)
 
 <p align="center">
-  <img src="assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
+  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
 </p>
 
-[![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
-[![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=python)](https://pypi.org/project/paperpilot/)
-[![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/CHB-learner/PaperPilot?color=7c3aed&label=release)](https://github.com/CHB-learner/PaperPilot/releases)
-![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)
-![LLM](https://img.shields.io/badge/LLM-OpenAI--compatible-10b981)
-![Reports](https://img.shields.io/badge/reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)
-![Workflow](https://img.shields.io/badge/workflow-evidence--grounded-0891b2)
+PaperPilot 是一个面向 AI 研究场景的 **CLI 文献检索与综述 Agent**。  
+它把自然语言研究需求，转化为可追踪、可复现的工作流，并输出中文/英文一致的三端报告（Markdown、HTML、PDF）。
 
-PaperPilot 是一个面向 AI 相关方向的命令行文献调研 Agent。你可以用自然语言输入研究需求，它会自动完成需求理解、检索计划、多源论文搜索、语料筛选、代码/PDF 解析、证据综合，并输出中文和英文两套 Markdown、HTML、PDF 报告。
+该项目是文件系统驱动的研究工作流，而不是聊天机器人：每次运行都会生成独立的 task 文件夹，完整保留状态、事件日志和中间产物。
 
-它不是一个简单聊天机器人，而是一个基于文件系统 run folder 的自动化研究工作流。每次运行都会生成独立任务文件夹，保存状态、事件日志、中间产物、质量检查和最终报告。
+## ✨ 我能做什么
 
-## 功能亮点
+- 自然语言解析研究意图，自动形成可执行检索任务
+- 生成检索协议与纳入/排除标准
+- 多源检索（免费源 + 可选 API 源）并进行统一标准化
+- 重排、去重、核心语料筛选与相关性分类
+- 校验 DOI/URL/PDF/代码链接可达性（不绕过付费墙）
+- 生成带证据链的综述正文与对照矩阵
+- 输出完整 run folder 与可追溯日志
 
-- 支持自然语言输入研究需求，由 LLM 辅助理解关键词和研究范围。
-- 基于 Rich 的彩色交互式 CLI：启动页展示当前模型、来源/API 状态，并支持 `/model`、`/sources` 和结构化确认面板。
-- 分层 Source Registry：默认覆盖 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP、ACL Anthology，并支持 DeepXiv / Agentic Data 等需要 API key 的扩展来源。
-- 支持 `--user-corpus` 导入本地 PDF、BibTeX、RIS、Markdown、文本文件作为用户语料。
-- 自动生成研究协议，包括研究问题、纳入/排除标准、时间范围和负面关键词。
-- 统一论文模型，支持 DOI、arXiv、标题相似度等多级去重。
-- relevance screening：将论文分为核心、相关但非核心、排除。
-- 解析 GitHub、GitLab、Hugging Face、项目主页等代码资源。
-- 只下载明确开放访问的 PDF，不绕过付费墙。
-- 下载 PDF 后抽取全文文本，用于后续综合分析。
-- Prompt Registry、Tool Registry、Capability Registry 和事件日志。
-- Evidence Ledger：把报告中的关键结论绑定到论文引用编号。
-- Review Agents：检查来源验证、相关性、引用合规和过度推断风险。
-- 统一 canonical report model，保证中文/英文 Markdown、HTML、PDF 的论文列表和结论一致。
+## 🚀 特性亮点
 
-## 安装
+### 交互体验
+- Rich 终端交互，支持颜色与分组菜单
+- 启动页显示当前模型、来源配置与快捷命令
+- 支持 `/model`、`/sources`、`/doctor`
+- 支持命令模式与交互模式统一工作流
+
+### 检索与筛选
+- Query 理解 + 检索计划 + 关键词多样化
+- 统一 `Paper` 数据模型
+- DOI、arXiv、PMCID/PMID、标题相似度等多级去重
+- 核心 / 相关 / 排除三类筛选
+- GitHub、GitLab、Hugging Face、项目页等代码链接解析
+- 下载开放 PDF（或可选跳过），并提取全文
+
+### 质量与报告
+- `quality gate`、反思重检、Evidence Ledger
+- Review Agents（来源核验、相关性、引证合规、越界断言检测）
+- Canonical report model 驱动中英报告一致
+- 论文统一编号引用（[1][2][3]）并自动体现在参考文献中
+- Markdown / HTML / PDF 输出一致且可对齐
+
+## 🗂 已集成来源
+
+默认免费来源：
+
+- arXiv
+- Semantic Scholar
+- OpenAlex
+- Crossref
+- OpenReview
+- PubMed / NCBI E-utilities
+- Europe PMC
+- bioRxiv / medRxiv
+- DBLP
+- ACL Anthology
+
+可选 API-key 来源：
+
+- DeepXiv / Agentic Data
+- CORE
+- Lens.org Scholarly API
+- IEEE Xplore
+- Springer Nature
+- Elsevier / Scopus
+- Dimensions
+
+## 🛠 安装
 
 从 PyPI 安装：
 
@@ -52,17 +93,15 @@ cd PaperPilot
 python -m pip install -e .
 ```
 
-## 配置 LLM
+## ⚙️ LLM 与来源配置
 
-PaperPilot 需要 OpenAI-compatible 的 LLM 配置，用于需求理解、检索关键词扩展、筛选、综合和报告生成。
+PaperPilot 需要 OpenAI-compatible 的 LLM 配置才能完成解析、规划、综合和报告生成。首次运行会自动生成可编辑模板：
 
-第一次进入交互模式时，如果没有检测到可用配置，系统会引导你配置并测试连通性：
-
-```bash
-PaperPilot
+```text
+~/.paperpilot/config.json
 ```
 
-第一次运行时，如果 `~/.paperpilot/config.json` 不存在，PaperPilot 会自动生成一个可编辑模板：
+模板示例：
 
 ```json
 {
@@ -86,9 +125,12 @@ PaperPilot
 }
 ```
 
-你可以直接编辑这个文件。没有 API key 的可选来源保持空字符串即可。`enabled: null` 表示自动策略：有 key 才启用，没 key 就不启用。
+说明：
 
-也可以手动配置：
+- 可选来源不填 key 不会启用，`enabled: null` 表示“有 key 后自动启用”。
+- 配置文件支持直接编辑，也可通过 CLI 命令管理。
+
+命令示例：
 
 ```bash
 PaperPilot config set --base-url https://api.deepseek.com --model deepseek-chat
@@ -99,78 +141,43 @@ PaperPilot config show
 PaperPilot --doctor
 ```
 
-配置可选来源 API Key：
-
 ```bash
 PaperPilot sources list
 PaperPilot sources config core
 PaperPilot sources config deepxiv
-PaperPilot sources config lens
 PaperPilot sources enable core
 PaperPilot sources test core
 ```
 
-在交互模式里也可以直接输入 `/sources` 查看来源/API 状态表。
+交互内可用 `/sources` 与 `/doctor` 快速查看与复查来源配置。
 
-健康检查：
+可选来源 API 获取入口：
 
-```bash
-PaperPilot --doctor
-```
-
-doctor 会检查当前 LLM 是否能连通，以及所有已经配置 API key 的可选文献来源是否能返回测试结果。进入交互模式时也会自动执行一次简版自检；在交互界面中可以输入 `/doctor` 主动再次检查。
-
-可选来源 API Key 获取方式：
-
-| 来源 | 获取方式 |
+| 来源 | 获取入口 |
 |---|---|
-| CORE | 在 [CORE API 页面](https://core.ac.uk/services/api) 申请 key。 |
-| Lens.org | 通过 [Lens API 文档](https://docs.api.lens.org/) 申请 Scholarly API access 或管理 token。 |
-| IEEE Xplore | 在 [IEEE Xplore API Getting Started](https://developer.ieee.org/getting_started) 注册并申请应用 key。 |
-| Springer Nature | 访问 [Springer Nature developer portal](https://dev.springernature.com/) 查看 API 文档并申请 key。 |
-| Elsevier / Scopus | 从 [Elsevier Developer Portal](https://dev.elsevier.com/) 和 [Scopus APIs getting started guide](https://www.elsevier.support/dataasaservice/answer/getting-started-guide-for-scopus-apis) 开始。 |
-| Dimensions | 参考 [Dimensions API access](https://docs.dimensions.ai/dsl/api.html)。Dimensions API 通常需要机构订阅或符合条件的研究访问。 |
-| DeepXiv / Agentic Data | 从 [Agentic Data API docs](https://data.rag.ac.cn/api/docs) 注册获取 token。文档说明支持 token 鉴权，注册 token 每日 10,000 次免费请求。PaperPilot 会优先使用 `deepxiv-sdk`，必要时 fallback 到 REST API。 |
-
-配置会缓存到：
-
-```text
-~/.paperpilot/config.json
-```
+| CORE | https://core.ac.uk/services/api |
+| Lens.org | https://docs.api.lens.org/ |
+| IEEE Xplore | https://developer.ieee.org/getting_started |
+| Springer Nature | https://dev.springernature.com/ |
+| Elsevier / Scopus | https://dev.elsevier.com/ |
+| Dimensions | https://docs.dimensions.ai/dsl/api.html |
+| DeepXiv / Agentic Data | https://data.rag.ac.cn/api/docs |
 
 配置优先级：
 
 1. 环境变量：`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`
 2. 用户配置：`~/.paperpilot/config.json`
-3. 旧版项目文件：`llmapi.txt`
+3. 兼容文件：`llmapi.txt`
 
-不要把 `~/.paperpilot/config.json`、`api.json`、`llmapi.txt`、`.env` 或任何包含 API Key 的文件提交到 GitHub。
+## 🧪 快速上手
 
-## 快速开始
-
-进入交互模式：
+交互模式（推荐）：
 
 ```bash
 PaperPilot
 ```
 
-交互启动页会显示当前 LLM profile、模型 API 状态、免费来源覆盖、可选 API-key 来源配置情况和快捷命令：
-
-```text
-/model      管理 LLM 配置
-/sources    查看检索来源和 API 状态
-/doctor     检查 LLM 和已配置来源 API
-/help       重新显示启动说明
-exit        退出
-```
-
-示例输入：
-
-```text
-调研RNA逆折叠 序列设计 近五年的文献，要求有代码仓库的
-```
-
-命令式运行：
+命令行模式：
 
 ```bash
 PaperPilot "RNA inverse folding sequence design" \
@@ -183,33 +190,26 @@ PaperPilot "RNA inverse folding sequence design" \
   --quality balanced
 ```
 
-导入本地论文作为种子语料：
+导入本地语料：
 
 ```bash
 PaperPilot "RNA inverse folding sequence design" \
   --auto-confirm \
   --user-corpus ./papers \
-  --user-corpus references.bib
+  --user-corpus references.bib \
+  --no-download
 ```
 
-默认免 key 来源包括 arXiv、Semantic Scholar、OpenAlex、Crossref、OpenReview、PubMed、Europe PMC、bioRxiv、medRxiv、DBLP 和 ACL Anthology。可选 API-key 来源包括 DeepXiv / Agentic Data、CORE、Lens.org、IEEE Xplore、Springer Nature、Elsevier/Scopus 和 Dimensions。
-
-跳过 PDF 下载：
-
-```bash
-PaperPilot "vision language model" --auto-confirm --no-download
-```
-
-查看或继续已有任务：
+任务管理：
 
 ```bash
 PaperPilot inspect runs/<task-id>
 PaperPilot resume runs/<task-id>
 ```
 
-## 整体架构
+## 🧭 流程架构
 
-PaperPilot 采用状态机式研究工作流：
+PaperPilot 的工作流为：
 
 ```text
 Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis -> Review -> Report
@@ -217,151 +217,106 @@ Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis
 
 ```mermaid
 flowchart LR
-  U[用户需求<br/>topic + 参数 + 本地语料] --> C[运行上下文<br/>task/state/events]
-  C --> P[Prompt Registry]
-  P --> QA[Query Understanding Agent]
-  QA --> PL[Planner Agent]
-  PL --> RP[Research Protocol Agent]
-  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL<br/>DeepXiv / CORE / Lens / IEEE / Springer / Scopus / Dimensions]
-  U --> LC[Local Corpus Import]
-  LC --> CB[Corpus Builder]
-  ST --> CB
-  CB --> RJ[Relevance Judge<br/>core / adjacent / exclude]
-  RJ --> VF[Verification + PDF Tools]
-  VF --> LM[Literature Matrix]
-  LM --> SA[Synthesis Agent]
-  SA --> QG[Quality Gate + Reflection]
-  QG --> EL[Evidence Ledger<br/>claim -> citation]
-  EL --> RA[Review Agents<br/>source / citation / overclaiming]
-  RA --> CR[Canonical Report]
-  CR --> OUT[中文/英文 Markdown<br/>中文/英文 HTML<br/>中文/英文 PDF]
+  U[用户需求] --> C[运行上下文]
+  C --> QA[需求理解]
+  QA --> PL[规划与协议]
+  PL --> ST[Source Registry 检索]
+  ST --> NB[语料标准化]
+  NB --> SC[核心/相关/排除分类]
+  SC --> VF[验证 + PDF/代码检查]
+  VF --> LM[文献矩阵]
+  LM --> QG[Quality Gate]
+  QG --> EL[Evidence Ledger]
+  EL --> RP[报告渲染（中英）]
 ```
 
-仓库中也包含一个 HTML 架构说明页：
+附带架构说明页：
 
 - `paperpilot_agent_flow.html`
 
-## 输出文件
+## 📁 产物目录
 
-默认情况下，每次运行会写入 `runs/<task-id>/`。如果传入 `--output-dir`，则使用指定目录。
+每次任务默认落在 `runs/<task-id>/`（或 `--output-dir` 指定目录），核心文件包括：
 
-核心任务文件：
+- `task.json`、`state.json`、`events.jsonl`、`manifest.json`
+- `query_understanding.md`、`plan.json`、`protocol.json`
+- `metadata.json`、`user_corpus_log.json`、`corpus.json`
+- `core_papers.json`、`adjacent_papers.json`、`excluded_papers.json`
+- `ranked_papers.json`
+- `verification.json`、`download_log.json`、`fulltext/`、`paper_notes.json`
+- `literature_matrix.json`、`synthesis.json`、`quality_gate.json`
+- `evidence_ledger.json`、`review_agent_findings.json`
+- `report.canonical.json`、`report.zh.md`、`report.en.md`
+- `report.zh.html`、`report.en.html`、`report.zh.pdf`、`report.en.pdf`
+- `pdfs/`、`source_diagnostics.json`、`registries.json`、`prompt_manifest.json`
 
-- `task.json`：任务元数据和参数。
-- `state.json`：阶段状态。
-- `events.jsonl`：阶段事件流。
-- `manifest.json`：产物清单。
-- `prompt_manifest.json`：Prompt 角色、版本和 JSON 输出要求。
-- `registries.json`：内置 ToolRegistry 和 CapabilityRegistry。
-- `source_diagnostics.json`：启用来源、返回数量和来源级错误。
-
-检索和语料文件：
-
-- `query_understanding.md`：关键词理解和歧义分析。
-- `plan.json`：检索计划和多样化检索式。
-- `protocol.json`：研究问题、范围、纳入/排除标准和负面关键词。
-- `metadata.json`：标准化后的候选论文。
-- `user_corpus_log.json`：本地语料导入日志。
-- `corpus.json`：完整筛选语料。
-- `core_papers.json`：核心论文。
-- `adjacent_papers.json`：相关但非核心论文。
-- `excluded_papers.json`：排除论文和理由。
-- `ranked_papers.json`：最终报告视图中的论文列表。
-
-证据和质量文件：
-
-- `verification.json`：DOI、URL、PDF、代码链接状态。
-- `download_log.json`：PDF 下载状态。
-- `fulltext/`：PDF 全文抽取文本。
-- `paper_notes.json`：全文抽取元数据。
-- `literature_matrix.json`：任务、方法和证据矩阵。
-- `synthesis.json`：领域背景、方法流派、逐篇总结、趋势和研究空白。
-- `quality_gate.json`：质量门结果。
-- `reflection.json`：检索质量反思和补检索建议。
-- `evidence_ledger.json`：claim-level 证据账本。
-- `review_agent_findings.json`：复核 Agent 检查结果。
-
-最终报告：
-
-- `report.canonical.json`：中英文共享的报告模型和 citation map。
-- `report.zh.md`
-- `report.en.md`
-- `report.zh.html`
-- `report.en.html`
-- `report.zh.pdf`
-- `report.en.pdf`
-- `pdfs/`：下载到的开放 PDF。
-
-## GitHub / 代码仓库筛选
+## 🧩 代码仓库筛选
 
 ```bash
 PaperPilot "retrieval augmented generation" --auto-confirm --github-filter required
 ```
 
-筛选模式：
+说明：
 
-- `any`：默认模式，不过滤论文，只标注代码状态。
-- `required`：最终报告视图只保留找到公开代码链接的论文；完整核心语料仍会保存。
-- `none`：最终报告视图只保留没有找到公开代码链接的论文。
+- `any`：保留全部论文，按有无代码进行标注
+- `required`：仅保留检测到公开代码的论文（核心语料仍保存）
+- `none`：仅保留未检测到公开代码的论文
 
-## 常用 CLI 参数
+## 🧪 常用参数
 
 ```text
---max-papers INT                 最终报告视图中的最大论文数量
---since-year INT                 优先检索该年份之后的论文
+--max-papers INT                 最终报告视图论文数量
+--since-year INT                 起始年份
 --github-filter any|required|none
---github-search-limit INT        主动 GitHub 搜索数量限制
+--github-search-limit INT        GitHub 搜索数量上限
 --no-download                    跳过 PDF 下载
---pdf-limit INT                  最大 PDF 下载数量
---user-corpus PATH               导入本地语料路径，可重复传入
+--pdf-limit INT                  PDF 下载上限
+--user-corpus PATH               本地语料路径，可重复传入
 --mode quick|apa|systematic
 --interaction auto|gated
 --quality fast|balanced|strict
---include-adjacent               在矩阵/附录中包含 adjacent papers
+--include-adjacent               包含 adjacent 论文到矩阵与附录
 --sources auto|all|core|biomed|cs|configured
---enable-source SOURCE           额外启用某个来源，可重复传入
---disable-source SOURCE          禁用某个来源，可重复传入
+--enable-source SOURCE           启用来源（可重复）
+--disable-source SOURCE          禁用来源（可重复）
 ```
 
-## 开发
-
-运行测试：
+## 🧱 开发与发布
 
 ```bash
 python -m unittest discover -s tests
 python -m compileall literature_agent
 ```
 
-本地构建：
-
 ```bash
 python -m pip install build twine
 python -m build
 python -m twine check dist/*
-```
-
-上传 PyPI：
-
-```bash
 python -m twine upload dist/*
 ```
 
-## 开源注意事项
+## 🌟 开源发布建议
 
-推送到 GitHub 前请确认：
+- 切勿提交包含 token 的文件：`~/.paperpilot/config.json`、`api.json`、`llmapi.txt`、`.env`
+- 建议先配置 `.gitignore`，避免上传运行目录/构建产物
+- 保持 LICENSE 与文档同步更新
+- 发布 Pages 时使用仓库设置：
+  - `Settings` → `Pages`
+  - `Build and deployment`
+  - `Source: Deploy from a branch`
+  - `Branch: main`
+  - `Folder: /docs`
 
-- `.gitignore` 已经存在。
-- 不提交 API Key、本地运行结果、构建产物和虚拟环境。
-- 不提交 `api.json`、`llmapi.txt`、`.env` 等敏感配置。
-- 如果 PyPI token 或 LLM token 曾经进入 Git 历史，立即撤销并重新生成。
-
-推荐首次提交范围：
+推荐第一版提交示例：
 
 ```bash
-git init
 git add README.md README.zh-CN.md pyproject.toml literature_agent tests paperpilot_agent_flow.html .gitignore LICENSE
 git commit -m "Initial open source release"
 git branch -M main
 git remote add origin https://github.com/CHB-learner/PaperPilot.git
 git push -u origin main
+git tag v1.x.y
+git push origin v1.x.y
 ```
+
+使用 PaperPilot 的场景中，建议在方法、输出和源码版本上给出明确版本号，保证复现。

@@ -1,49 +1,98 @@
 # PaperPilot
 
+[![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
+[![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=Python)](https://pypi.org/project/paperpilot/)
+[![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/CHB-learner/PaperPilot?color=7c3aed&label=Release)](https://github.com/CHB-learner/PaperPilot/releases)
+[![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)](https://github.com/CHB-learner/PaperPilot)
+[![Reports](https://img.shields.io/badge/Reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)](https://pypi.org/project/paperpilot/)
+[![Workflow](https://img.shields.io/badge/Workflow-evidence--grounded-0891b2)](https://github.com/CHB-learner/PaperPilot)
+
 [English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/)
 
 <p align="center">
-  <img src="assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
+  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - AI literature review agent" width="100%">
 </p>
 
-[![PyPI](https://img.shields.io/pypi/v/paperpilot?color=2563eb&label=PyPI)](https://pypi.org/project/paperpilot/)
-[![Python](https://img.shields.io/pypi/pyversions/paperpilot?color=0f766e&label=python)](https://pypi.org/project/paperpilot/)
-[![License](https://img.shields.io/github/license/CHB-learner/PaperPilot?color=f59e0b)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/CHB-learner/PaperPilot?color=7c3aed&label=release)](https://github.com/CHB-learner/PaperPilot/releases)
-![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)
-![LLM](https://img.shields.io/badge/LLM-OpenAI--compatible-10b981)
-![Reports](https://img.shields.io/badge/reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)
-![Workflow](https://img.shields.io/badge/workflow-evidence--grounded-0891b2)
+PaperPilot is a **CLI research agent for AI-related literature review**.  
+It turns one user request into a traceable, evidence-based research workflow and generates bilingual reports (`zh/en`) in Markdown, HTML, and PDF.
 
-PaperPilot is a CLI research agent for AI-related literature review. It turns a natural-language research request into a verified paper corpus, code/PDF collection, evidence-grounded synthesis, and bilingual reports in Markdown, HTML, and PDF.
+## ✨ What PaperPilot does
 
-It is designed as a file-system based research workflow, not a chatbot. Each run creates a self-contained run folder with state, logs, intermediate artifacts, evidence checks, and final reports.
+PaperPilot is not a chatbot. It is an **interactive scientific workflow**:
 
-## Highlights
+- Parse natural-language research requests
+- Build an explicit search protocol with inclusion/exclusion rules
+- Query multi-source literature APIs
+- Normalize, deduplicate, and screen papers
+- Verify URLs/PDF/code availability
+- Synthesize evidence and generate review reports
+- Output structured artifacts for reproducibility
 
-- Natural-language research intake with LLM-assisted query understanding.
-- Rich interactive CLI with startup model/source status, `/model`, `/sources`, and structured confirmation panels.
-- Layered Source Registry with arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, ACL Anthology, and optional API-key sources including DeepXiv / Agentic Data.
-- Local corpus import with `--user-corpus` for PDF, BibTeX, RIS, Markdown, and text files.
-- Research protocol generation with inclusion/exclusion criteria and negative keywords.
-- Corpus normalization, DOI/arXiv/title-similarity deduplication, ranking, and relevance screening.
-- Code repository detection for GitHub, GitLab, Hugging Face, and project pages.
-- Open-access PDF download only; no paywall bypassing.
-- Full-text extraction for downloaded PDFs.
-- Prompt Registry, Tool Registry, Capability Registry, and event logging.
-- Evidence ledger that maps report-level claims to numbered paper citations.
-- Review-agent checks for source verification, relevance, citation compliance, and overclaiming risk.
-- Canonical bilingual report model with aligned Chinese/English Markdown, HTML, and PDF outputs.
+Each run creates a dedicated folder under `runs/` with full state, logs, and intermediate files.
 
-## Installation
+## 🚀 Highlights
 
-From PyPI:
+### Core experience
+- Natural-language intake with LLM-assisted interpretation
+- Interactive shell with:
+  - `/model` to manage LLM profiles
+  - `/sources` to inspect search source/API status
+  - `/doctor` for quick self-checks
+- Multi-source retrieval with source registry and diagnostics
+- Resume/inspect modes for reproducible research sessions
+
+### Retrieval and screening
+- Protocol-aware search using plan + diversified keywords
+- Canonicalized `Paper` schema and robust deduplication
+- Core/adjacent/excluded paper classification
+- PDF + code-link verification (no paywall bypass)
+- Optional full-text extraction from downloadable PDFs
+
+### Reporting
+- Canonical bilingual report model
+- Consistent `[1][2][3]` citation mapping
+- Method taxonomy and evidence matrix
+- Markdown + HTML + PDF outputs with aligned content
+
+### Quality controls
+- Quality gates and reflection workflow
+- Evidence ledger linking claims to corpus evidence
+- Review checks for citation compliance and source reliability
+- Event stream logs for auditability
+
+## 🗂 Source stack
+
+Default free sources:
+
+- arXiv
+- Semantic Scholar
+- OpenAlex
+- Crossref
+- OpenReview
+- PubMed / NCBI E-utilities
+- Europe PMC
+- bioRxiv / medRxiv
+- DBLP
+- ACL Anthology
+
+Optional API-key sources:
+
+- DeepXiv / Agentic Data
+- CORE
+- Lens.org Scholarly API
+- IEEE Xplore
+- Springer Nature
+- Elsevier / Scopus
+- Dimensions
+
+## 🛠 Installation
 
 ```bash
 python -m pip install paperpilot -i https://pypi.org/simple
 ```
 
-For local development:
+Local development:
 
 ```bash
 git clone https://github.com/CHB-learner/PaperPilot.git
@@ -51,17 +100,17 @@ cd PaperPilot
 python -m pip install -e .
 ```
 
-## LLM Configuration
+## ⚙️ LLM + Source Configuration
 
-PaperPilot requires an OpenAI-compatible LLM configuration for query understanding, planning, screening, synthesis, and report generation.
+PaperPilot requires OpenAI-compatible LLM settings for query understanding, planning, synthesis, and report generation.
 
-Interactive setup:
+On first run, it creates an editable configuration template at:
 
-```bash
-PaperPilot
+```text
+~/.paperpilot/config.json
 ```
 
-On first run, PaperPilot creates an editable template at `~/.paperpilot/config.json` if the file does not already exist:
+Minimal default template:
 
 ```json
 {
@@ -85,9 +134,13 @@ On first run, PaperPilot creates an editable template at `~/.paperpilot/config.j
 }
 ```
 
-You can edit this file directly. Leave optional source keys empty if you do not have access. `enabled: null` means PaperPilot will enable that source automatically only after a key is configured.
+Notes:
 
-Manual setup:
+- Leave optional source API keys empty if unavailable.
+- `enabled: null` means auto-enable once a valid key is provided.
+- `~/.paperpilot/config.json` is not committed; edit it directly or use CLI commands.
+
+### CLI config commands
 
 ```bash
 PaperPilot config set --base-url https://api.deepseek.com --model deepseek-chat
@@ -98,72 +151,37 @@ PaperPilot config show
 PaperPilot --doctor
 ```
 
-Optional source API keys:
-
 ```bash
 PaperPilot sources list
 PaperPilot sources config core
 PaperPilot sources config deepxiv
-PaperPilot sources config lens
 PaperPilot sources enable core
 PaperPilot sources test core
 ```
 
-Inside interactive mode, use `/sources` to view the same source/API status table without leaving the session.
+Inside interactive mode, use `/sources` and `/doctor`.
 
-Health checks:
+## 🔑 API source keys references
 
-```bash
-PaperPilot --doctor
-```
-
-The doctor command checks the active LLM connection and any optional paper sources that have API keys configured. Interactive mode also runs a compact doctor check on startup; use `/doctor` inside the shell to run it again.
-
-Where to get optional source API keys:
-
-| Source | How to get access |
+| Source | Access page |
 |---|---|
-| CORE | Request a key from the [CORE API page](https://core.ac.uk/services/api). |
-| Lens.org | Request Scholarly API access or manage tokens from the [Lens API documentation](https://docs.api.lens.org/). |
-| IEEE Xplore | Register and request an application key via [IEEE Xplore API Getting Started](https://developer.ieee.org/getting_started). |
-| Springer Nature | Use the [Springer Nature developer portal](https://dev.springernature.com/) for API documentation and keys. |
-| Elsevier / Scopus | Start from the [Elsevier Developer Portal](https://dev.elsevier.com/) and the [Scopus APIs getting started guide](https://www.elsevier.support/dataasaservice/answer/getting-started-guide-for-scopus-apis). |
-| Dimensions | See [Dimensions API access](https://docs.dimensions.ai/dsl/api.html). Dimensions API access usually requires an institutional subscription or eligible research access. |
-| DeepXiv / Agentic Data | Register from the [Agentic Data API docs](https://data.rag.ac.cn/api/docs). The service documents token auth and 10,000 free daily requests for registered tokens. PaperPilot uses the `deepxiv-sdk` package and falls back to the REST API if needed. |
+| CORE | https://core.ac.uk/services/api |
+| Lens.org | https://docs.api.lens.org/ |
+| IEEE Xplore | https://developer.ieee.org/getting_started |
+| Springer Nature | https://dev.springernature.com/ |
+| Elsevier / Scopus | https://dev.elsevier.com/ |
+| Dimensions | https://docs.dimensions.ai/dsl/api.html |
+| DeepXiv / Agentic Data | https://data.rag.ac.cn/api/docs |
 
-Configuration is stored in:
+## 🧪 Quick Start
 
-```text
-~/.paperpilot/config.json
-```
-
-Configuration priority:
-
-1. Environment variables: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
-2. User config: `~/.paperpilot/config.json`
-3. Legacy project file: `llmapi.txt`
-
-Do not commit `~/.paperpilot/config.json`, `api.json`, `llmapi.txt`, `.env`, or any file containing API keys.
-
-## Quick Start
-
-Interactive mode:
+Interactive usage:
 
 ```bash
 PaperPilot
 ```
 
-The interactive shell shows the active LLM profile, model API status, free-source coverage, optional API-key source coverage, and quick commands:
-
-```text
-/model      manage LLM profiles
-/sources    inspect enabled and optional search sources
-/doctor     check LLM and configured source APIs
-/help       show the startup guide again
-exit        quit
-```
-
-Command mode:
+Command mode example:
 
 ```bash
 PaperPilot "RNA inverse folding sequence design" \
@@ -176,31 +194,26 @@ PaperPilot "RNA inverse folding sequence design" \
   --quality balanced
 ```
 
-Use local papers as seed corpus:
+Import local corpus and skip download:
 
 ```bash
 PaperPilot "RNA inverse folding sequence design" \
   --auto-confirm \
   --user-corpus ./papers \
-  --user-corpus references.bib
+  --user-corpus references.bib \
+  --no-download
 ```
 
-Skip PDF downloads:
-
-```bash
-PaperPilot "vision language model" --auto-confirm --no-download
-```
-
-Inspect or rerun a task:
+Inspect/resume workflow:
 
 ```bash
 PaperPilot inspect runs/<task-id>
 PaperPilot resume runs/<task-id>
 ```
 
-## Architecture
+## 🧭 Workflow
 
-PaperPilot follows a state-machine workflow:
+PaperPilot follows this state-machine pipeline:
 
 ```text
 Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis -> Review -> Report
@@ -208,153 +221,96 @@ Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis
 
 ```mermaid
 flowchart LR
-  U[User request<br/>topic + params + local corpus] --> C[Run context<br/>task/state/events]
-  C --> P[Prompt Registry]
-  P --> QA[Query Understanding Agent]
-  QA --> PL[Planner Agent]
-  PL --> RP[Research Protocol Agent]
-  RP --> ST[Source Registry<br/>arXiv / S2 / OpenAlex / Crossref / OpenReview<br/>PubMed / Europe PMC / bioRxiv / medRxiv / DBLP / ACL<br/>DeepXiv / CORE / Lens / IEEE / Springer / Scopus / Dimensions]
-  U --> LC[Local Corpus Import]
-  LC --> CB[Corpus Builder]
-  ST --> CB
-  CB --> RJ[Relevance Judge<br/>core / adjacent / exclude]
-  RJ --> VF[Verification + PDF Tools]
-  VF --> LM[Literature Matrix]
-  LM --> SA[Synthesis Agent]
-  SA --> QG[Quality Gate + Reflection]
-  QG --> EL[Evidence Ledger<br/>claim -> citation]
-  EL --> RA[Review Agents<br/>source / citation / overclaiming]
-  RA --> CR[Canonical Report]
-  CR --> OUT[ZH/EN Markdown<br/>ZH/EN HTML<br/>ZH/EN PDF]
+  U[User request] --> C[Run context]
+  C --> QA[Query understanding]
+  QA --> PL[Planning + Protocol]
+  PL --> ST[Source Registry search]
+  ST --> NB[Corpus normalization]
+  NB --> SC[Core/adjacent screening]
+  SC --> VF[Verification + PDF + code checks]
+  VF --> SY[Literature matrix]
+  SY --> QG[Quality gate + reflection]
+  QG --> EL[Evidence ledger]
+  EL --> RP[Report render (ZH/EN)]
 ```
 
-Default free sources include arXiv, Semantic Scholar, OpenAlex, Crossref, OpenReview, PubMed, Europe PMC, bioRxiv, medRxiv, DBLP, and ACL Anthology. Optional API-key sources include DeepXiv / Agentic Data, CORE, Lens.org, IEEE Xplore, Springer Nature, Elsevier/Scopus, and Dimensions.
+## 📁 Run artifacts
 
-The repository also includes an HTML architecture overview:
+`runs/<task-id>/` will contain:
 
-- `paperpilot_agent_flow.html`
+- `task.json` / `state.json` / `events.jsonl` / `manifest.json`
+- `query_understanding.md` / `plan.json` / `protocol.json`
+- `metadata.json` / `corpus.json` / `core_papers.json`
+- `adjacent_papers.json` / `excluded_papers.json` / `ranked_papers.json`
+- `verification.json` / `download_log.json` / `fulltext/` / `paper_notes.json`
+- `literature_matrix.json` / `synthesis.json` / `quality_gate.json`
+- `evidence_ledger.json` / `review_agent_findings.json`
+- `report.canonical.json` / `report.zh.md` / `report.en.md`
+- `report.zh.html` / `report.en.html` / `report.zh.pdf` / `report.en.pdf`
+- `pdfs/` / `source_diagnostics.json` / `registries.json` / `prompt_manifest.json`
 
-## Output Artifacts
+## 🧩 Code filter modes
 
-Each run writes a folder under `runs/<task-id>/` unless `--output-dir` is provided.
+- `any`: keep all papers and annotate code availability
+- `required`: keep only papers with detected code repositories in final view
+- `none`: keep only papers without detected public code links
 
-Core run files:
-
-- `task.json`: task metadata and parameters.
-- `state.json`: stage status.
-- `events.jsonl`: stage event stream.
-- `manifest.json`: generated artifact list.
-- `prompt_manifest.json`: versioned prompt roles and required JSON keys.
-- `registries.json`: built-in ToolRegistry and CapabilityRegistry.
-- `source_diagnostics.json`: enabled sources, returned counts, and source-level errors.
-
-Search and corpus files:
-
-- `query_understanding.md`: keyword interpretation and ambiguity analysis.
-- `plan.json`: search plan and diversified queries.
-- `protocol.json`: research question, scope, inclusion/exclusion criteria, negative keywords.
-- `metadata.json`: normalized raw search candidates.
-- `user_corpus_log.json`: local corpus import log.
-- `corpus.json`: screened full corpus.
-- `core_papers.json`: core papers.
-- `adjacent_papers.json`: adjacent papers.
-- `excluded_papers.json`: excluded papers and reasons.
-- `ranked_papers.json`: final report-view papers.
-
-Evidence and quality files:
-
-- `verification.json`: DOI, URL, PDF, and code status.
-- `download_log.json`: PDF download status.
-- `fulltext/`: extracted PDF text.
-- `paper_notes.json`: full-text extraction metadata.
-- `literature_matrix.json`: method/task/evidence matrix.
-- `synthesis.json`: field overview, method taxonomy, paper summaries, trends, gaps.
-- `quality_gate.json`: pass/retry/needs-user-attention verdict.
-- `reflection.json`: search quality reflection and retry hints.
-- `evidence_ledger.json`: claim-level evidence ledger.
-- `review_agent_findings.json`: review-agent checks.
-
-Final reports:
-
-- `report.canonical.json`: shared bilingual report model and citation map.
-- `report.zh.md`
-- `report.en.md`
-- `report.zh.html`
-- `report.en.html`
-- `report.zh.pdf`
-- `report.en.pdf`
-- `pdfs/`: downloaded open-access PDFs.
-
-## GitHub / Code Filter
-
-```bash
-PaperPilot "retrieval augmented generation" --auto-confirm --github-filter required
-```
-
-Filter modes:
-
-- `any`: keep all papers and annotate code availability.
-- `required`: final report view keeps papers with detected public code links; full screened corpus is still saved.
-- `none`: final report view keeps papers without detected public code links.
-
-## CLI Options
+## 🧪 CLI options (important ones)
 
 ```text
 --max-papers INT                 maximum papers in final report view
---since-year INT                 prefer papers since this year
+--since-year INT                 preferred lower year bound
 --github-filter any|required|none
---github-search-limit INT        active GitHub search limit
+--github-search-limit INT
 --no-download                    skip PDF downloads
 --pdf-limit INT                  maximum PDFs to download
---user-corpus PATH               import local corpus path; repeatable
+--user-corpus PATH               repeatable local corpus path
 --mode quick|apa|systematic
 --interaction auto|gated
 --quality fast|balanced|strict
---include-adjacent               include adjacent papers in matrix/appendix
+--include-adjacent               include adjacent papers in appendices
 --sources auto|all|core|biomed|cs|configured
---enable-source SOURCE           enable one additional source; repeatable
---disable-source SOURCE          disable one source; repeatable
+--enable-source SOURCE           enable one source (repeatable)
+--disable-source SOURCE          disable one source (repeatable)
 ```
 
-## Development
+See `paperpilot --help` for full options and Chinese/English output.
 
-Run tests:
+## 🧱 Development notes
 
-```bash
-python -m unittest discover -s tests
-python -m compileall literature_agent
-```
+- Keep run outputs and generated artifacts out of source control.
+- Keep API keys out of git history.
+- Prefer `.gitignore` over manual cleanup.
+- Use semantic tags for releases and keep `README` + docs aligned.
 
-Build locally:
+## 🧭 Open source checklist
 
-```bash
-python -m pip install build twine
-python -m build
-python -m twine check dist/*
-```
+- Ensure `~/.paperpilot/config.json`, `api.json`, and `.env` with credentials are never committed.
+- Add/keep `LICENSE` and `.gitignore`.
+- Add source code and tags before publishing release assets.
+- Publish GitHub Pages from the `main` branch `/docs`.
 
-Publish to PyPI:
-
-```bash
-python -m twine upload dist/*
-```
-
-## Open Source Notes
-
-Before pushing to GitHub:
-
-- Make sure `.gitignore` is present.
-- Do not commit API keys, local run outputs, build artifacts, or virtual environments.
-- Add a `LICENSE` file before calling the project open source in a strict legal sense.
-- If any PyPI or LLM token was ever committed, revoke it immediately and create a new one.
-
-Suggested first push:
+Suggested first-publish flow:
 
 ```bash
-git init
-git add README.md README.zh-CN.md pyproject.toml literature_agent tests paperpilot_agent_flow.html .gitignore LICENSE
+git add README.md README.zh-CN.md pyproject.toml literature_agent tests paperpilot_agent_flow.html .github .gitignore LICENSE
 git commit -m "Initial open source release"
 git branch -M main
 git remote add origin https://github.com/CHB-learner/PaperPilot.git
 git push -u origin main
+git tag v1.x.y
+git push origin v1.x.y
 ```
+
+PyPI release steps:
+
+```bash
+python -m pip install build twine
+python -m build
+python -m twine upload dist/*
+```
+
+## 📚 Citation note
+
+If you use PaperPilot in your work, include the repository URL and version used so results are reproducible.
+

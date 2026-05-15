@@ -74,7 +74,7 @@ def print_welcome(app_config, active_model_label: str, *, source_mode: str = "au
         ", ".join(summary.missing_optional[:6]) + (" ..." if len(summary.missing_optional) > 6 else "") or "none",
     )
     console.print(table)
-    console.print("[bold]Example[/bold]: 调研RNA逆折叠 序列设计 近五年的文献，要求有代码仓库的")
+    console.print("[bold]Example[/bold]: 调研CVPR/ICML近三年关于少样本学习在生物序列中的应用，要求有代码链接")
     console.print("[dim]Commands: /model  /sources  /doctor  /help  exit[/dim]\n")
 
 
