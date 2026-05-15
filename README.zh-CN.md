@@ -66,6 +66,7 @@ PaperPilot 是一个面向 AI 研究场景的 **CLI 文献检索与综述 Agent*
 - bioRxiv / medRxiv
 - DBLP
 - ACL Anthology
+- Papers.cool
 
 可选 API-key 来源：
 
@@ -162,6 +163,7 @@ PaperPilot sources test core
 | Elsevier / Scopus | https://dev.elsevier.com/ |
 | Dimensions | https://docs.dimensions.ai/dsl/api.html |
 | DeepXiv / Agentic Data | https://data.rag.ac.cn/api/docs |
+| Papers.cool | https://papers.cool |
 
 配置优先级：
 
@@ -283,16 +285,24 @@ PaperPilot "retrieval augmented generation" --auto-confirm --github-filter requi
 
 ## 🧱 开发与发布
 
+### 预检
+
 ```bash
 python -m unittest discover -s tests
 python -m compileall literature_agent
-```
-
-```bash
-python -m pip install build twine
 python -m build
 python -m twine check dist/*
-python -m twine upload dist/*
+```
+
+### 发版建议
+
+```bash
+./publish_pypi.sh --dry-run --version 1.4.4
+git add -A
+git commit -m "chore: release v1.4.4"
+git tag -a v1.4.4 -m "v1.4.4"
+git push origin main --tags
+./publish_pypi.sh --version 1.4.4
 ```
 
 ## 🌟 开源发布建议
@@ -307,16 +317,18 @@ python -m twine upload dist/*
   - `Branch: main`
   - `Folder: /docs`
 
-推荐第一版提交示例：
+### 一键发布
 
 ```bash
-git add README.md README.zh-CN.md pyproject.toml literature_agent tests paperpilot_agent_flow.html .gitignore LICENSE
-git commit -m "Initial open source release"
-git branch -M main
-git remote add origin https://github.com/CHB-learner/PaperPilot.git
-git push -u origin main
-git tag v1.x.y
-git push origin v1.x.y
+# 仅预检（不上传）
+./scripts/release_everywhere.sh --dry-run
+
+# 完整发布（代码推送/打 tag/GitHub Release/PyPI）
+export PYPI_TOKEN='pypi-...'
+./scripts/release_everywhere.sh
+
+# 不发布到 PyPI 的本地发版（如仅先推 GitHub）
+./scripts/release_everywhere.sh --no-pypi
 ```
 
 使用 PaperPilot 的场景中，建议在方法、输出和源码版本上给出明确版本号，保证复现。

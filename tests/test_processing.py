@@ -533,6 +533,102 @@ Paragraph.
         finally:
             module.request_json = original_json
 
+    def test_parse_papers_cool_arxiv_and_venue_html(self):
+        import literature_agent.searchers as module
+
+        arxiv_html = """
+        <div id=\"2401.00001\" class=\"panel paper\">
+          <a id=\"title-2401.00001\" href=\"/paper/2401.00001\">RNA inverse folding with attention</a>
+          <p id=\"summary-2401.00001\">A generative model for RNA design.</p>
+          <p id=\"authors-2401.00001\"><a>Ann Lee</a>, <a>Ben Zhou</a></p>
+          <p id=\"date-2401.00001\"><span class=\"date-data\">2024</span></p>
+          <p id=\"subjects-2401.00001\">cs.AI</p>
+          <a id=\"pdf-2401.00001\" data=\"https://papers.cool/papers/2401.00001.pdf\">PDF</a>
+        </div>
+        <div id=\"conf.2025\" class=\"panel paper\">
+          <a id=\"title-conf.2025\" href=\"/paper/conf\">Conference RNA design benchmarks</a>
+          <p id=\"summary-conf.2025\">Benchmarking framework for structural design.</p>
+          <p id=\"authors-conf.2025\"><a>Carol Wu</a></p>
+          <p id=\"subjects-conf.2025\">bioinformatics</p>
+          <a id=\"pdf-conf.2025\" data=\"https://papers.cool/papers/conf.pdf\">PDF</a>
+        </div>
+        """
+        venue_html = """
+        <div id=\"conf.2025\" class=\"panel paper\">
+          <a id=\"title-conf.2025\" href=\"https://papers.cool/venue/conf/\">RNA sequence design venue paper</a>
+          <p id=\"summary-conf.2025\">A venue search result.</p>
+          <p id=\"authors-conf.2025\"><a>Dana Kim</a>, <a>Tom Lee</a></p>
+          <p id=\"date-conf.2025\">2025</p>
+          <p id=\"subjects-conf.2025\">RNA, structure</p>
+          <a id=\"pdf-conf.2025\" data=\"/pdf/conf-1.pdf\">PDF</a>
+        </div>
+        """
+        with self.subTest("arxiv search mode"):
+            papers = module._parse_papers_cool_html(arxiv_html, "RNA inverse folding", "arxiv")
+            self.assertEqual(len(papers), 2)
+            self.assertEqual(papers[0].source, "papers_cool")
+            self.assertEqual(papers[0].title, "RNA inverse folding with attention")
+            self.assertEqual(papers[0].year, 2024)
+            self.assertEqual(papers[0].arxiv_id, "2401.00001")
+            self.assertTrue(papers[0].pdf_url.endswith(".pdf"))
+        with self.subTest("venue search mode"):
+            papers = module._parse_papers_cool_html(venue_html, "RNA inverse folding", "venue")
+            self.assertEqual(len(papers), 1)
+            self.assertEqual(papers[0].venue, "venue")
+            self.assertEqual(papers[0].year, 2025)
+
+    def test_papers_cool_list_pagination_uses_skip_and_show(self):
+        import literature_agent.searchers as module
+        from urllib.parse import parse_qs, urlparse
+
+        def panel(idx: int) -> str:
+            return f"""
+            <div id=\"{idx:04d}.{idx:04d}\" class=\"panel paper\">
+              <a id=\"title-{idx:04d}.{idx:04d}\" href=\"/paper/{idx:04d}.{idx:04d}\">RNA inverse folding sample {idx}</a>
+              <p id=\"summary-{idx:04d}.{idx:04d}\">sample {idx} model.</p>
+              <p id=\"date-{idx:04d}.{idx:04d}\">2024</p>
+              <p id=\"subjects-{idx:04d}.{idx:04d}\">cs.AI</p>
+              <a id=\"pdf-{idx:04d}.{idx:04d}\" data=\"/pdf/p{idx}.pdf\">PDF</a>
+            </div>
+            """
+
+        first = "".join(panel(i) for i in range(20))
+        second = panel(20)
+
+        def request_text(url, *args, **kwargs):
+            skip = int(parse_qs(urlparse(url).query).get("skip", ["0"])[0])
+            if skip == 0:
+                return first
+            if skip == 20:
+                return second
+            return ""
+
+        original_request_text = module.request_text
+        try:
+            module.request_text = request_text
+            papers = module._search_papers_cool_list("arxiv", "RNA inverse folding", 21, None)
+            self.assertEqual(len(papers), 21)
+            self.assertEqual(papers[0].title, "RNA inverse folding sample 0")
+            self.assertEqual(papers[20].title, "RNA inverse folding sample 20")
+        finally:
+            module.request_text = original_request_text
+
+    def test_papers_cool_parsing_robust_to_missing_fields(self):
+        import literature_agent.searchers as module
+
+        html = """
+        <div id=\"2024.00003\" class=\"panel paper\">
+          <a id=\"title-2024.00003\" href=\"/paper/broken\">RNA inverse folding robustness</a>
+          <p id=\"summary-broken.2024\">No authors, no date, no pdf</p>
+          <p id=\"subjects-broken.2024\">systems</p>
+        </div>
+        """
+        papers = module._parse_papers_cool_html(html, "RNA inverse folding", "arxiv")
+        self.assertEqual(len(papers), 1)
+        self.assertEqual(papers[0].year, 2024)
+        self.assertEqual(papers[0].authors, [])
+        self.assertIsNone(papers[0].pdf_url)
+
     def test_parse_deepxiv_response(self):
         import literature_agent.searchers as module
 

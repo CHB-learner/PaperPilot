@@ -52,12 +52,15 @@ def build_canonical_report(
         for summary in synthesis.get("paper_summaries", [])
         if summary.get("citation_key") in report_keys
     ]
+    if len(paper_summaries) < len(report_items):
+        paper_summaries = _ensure_report_summaries(report_items, synthesis.get("paper_summaries", []), citation_map, paper_summaries)
     method_taxonomy = _with_representative_citations(
         synthesis.get("method_taxonomy", synthesis.get("themes", [])),
         citation_map,
     )
     method_comparison = _with_comparison_citations(synthesis.get("method_comparison", []), citation_map)
     literature_matrix = [_with_matrix_citation(row, citation_map) for row in literature_matrix]
+    evidence_map = _normalize_evidence_map(synthesis.get("evidence_map", []), citation_map)
     verification_by_key = {record.citation_key: record.to_dict() for record in verification}
     pdf_summary = summarize_downloads(download_log)
     _with_download_citations(pdf_summary, title_citation_map)
@@ -92,9 +95,12 @@ def build_canonical_report(
         "synthesis": synthesis,
         "field_overview": synthesis.get("field_overview", {}),
         "method_taxonomy": method_taxonomy,
+        "research_questions": synthesis.get("field_overview", {}).get("research_questions", []),
         "paper_summaries": paper_summaries,
         "method_comparison": method_comparison,
         "research_trends": synthesis.get("research_trends", synthesis.get("method_evolution", [])),
+        "research_trends_with_evidence": _attach_claim_references(synthesis.get("research_trends", []), citation_map),
+        "evidence_map": evidence_map,
         "verification": verification_by_key,
         "pdf_summary": pdf_summary,
         "download_log": download_log,
@@ -268,6 +274,87 @@ def _with_representative_citations(methods: list[dict[str, Any]], citation_map: 
         result["representative_paper_refs"] = _format_representative_refs(result.get("representative_papers"), citation_map)
         enriched.append(result)
     return enriched
+
+
+def _ensure_report_summaries(
+    report_items: list[dict[str, Any]],
+    raw_summaries: list[dict[str, Any]],
+    citation_map: dict[str, dict[str, Any]],
+    already_present: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    present_keys = {summary.get("citation_key") for summary in already_present}
+    for paper in report_items:
+        key = paper["citation_key"]
+        if key in present_keys:
+            continue
+        fallback = {
+            "citation_key": key,
+            "title": paper["title"],
+            "research_question": "MATERIAL GAP",
+            "task_definition": "No structured task statement extracted in current synthesis.",
+            "task": "Open interpretation",
+            "method": "MATERIAL GAP",
+            "contributions": "MATERIAL GAP",
+            "results_signal": "MATERIAL GAP",
+            "reproducibility": f"Code: {'found' if paper['code_url'] else 'not found'}, PDF: {'found' if paper['pdf_url'] else 'not found'}.",
+            "evidence_basis": "metadata_or_abstract_only",
+            "limitations": ["No full synthesis sentence was generated; claim should be treated cautiously."],
+        }
+        fallback.update(_with_summary_citation(fallback, citation_map))
+        already_present.append(fallback)
+    return already_present
+
+
+def _normalize_evidence_map(
+    evidence_map: list[dict[str, Any]],
+    citation_map: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for idx, item in enumerate(evidence_map, start=1):
+        if not isinstance(item, dict):
+            continue
+        claim = str(item.get("claim") or "").strip()
+        if not claim:
+            continue
+        refs = _map_evidence_refs(item.get("citation_keys") or item.get("citations", []), citation_map)
+        normalized.append(
+            {
+                "claim_id": str(item.get("claim_id") or f"claim_{idx}"),
+                "claim": claim,
+                "citation_refs": refs or [""],
+                "citation_keys": [key for key in item.get("citation_keys", []) if key],
+                "strength": (str(item.get("strength") or "moderate")).lower(),
+                "evidence_basis": str(item.get("basis") or item.get("evidence_basis") or "synthesis"),
+            }
+        )
+    return normalized
+
+
+def _attach_claim_references(trends: list[str], citation_map: dict[str, dict[str, Any]]) -> list[str]:
+    if not trends:
+        return []
+    return [f"{trend}" for trend in trends]
+
+
+def _map_evidence_refs(refs: Any, citation_map: dict[str, dict[str, Any]]) -> list[str]:
+    if isinstance(refs, str):
+        candidate_keys = [item.strip() for item in refs.split(",") if item.strip()]
+    elif isinstance(refs, list):
+        candidate_keys = [str(item).strip() for item in refs if str(item).strip()]
+    else:
+        candidate_keys = []
+    resolved = []
+    for key in candidate_keys:
+        paper = citation_map.get(key)
+        if not paper:
+            paper = citation_map.get(_normalize_title_for_match(key))
+        if paper:
+            resolved.append(paper["citation_label"])
+        else:
+            if key:
+                resolved.append(key)
+    deduped = list(dict.fromkeys(resolved))
+    return deduped
 
 
 def _with_comparison_citations(rows: list[dict[str, Any]], citation_map: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -578,10 +665,12 @@ HTML_SHELL = """<!doctype html>
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--panel);
+      box-shadow: 0 1px 0 rgba(23, 32, 51, 0.02);
     }}
     table {{
       width: 100%;
       min-width: 760px;
+      table-layout: fixed;
       border-collapse: collapse;
       font-size: 13px;
     }}
@@ -590,6 +679,8 @@ HTML_SHELL = """<!doctype html>
       border-bottom: 1px solid var(--line);
       text-align: left;
       vertical-align: top;
+      word-wrap: break-word;
+      word-break: break-word;
     }}
     th {{
       color: var(--ink);
@@ -672,7 +763,14 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 
 {{ report.field_overview.why_it_matters }}
 
+### 研究问题（RQ）
+{% for item in report.field_overview.research_questions %}
+- {{ item }}
+{% endfor %}
+
+### 证据范围
 **证据范围说明**: {{ report.field_overview.scope_note }}
+**适用领域**: {{ report.field_overview.applicable_domains | join(", ") }}
 
 ## 4. 主流方法流派综述
 
@@ -682,6 +780,17 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 **核心思想**: {{ method.core_idea }}
 
 **典型技术路线**: {{ method.typical_pipeline }}
+
+**步骤式流程**:
+{% for step in method.pipeline_steps %}
+- {{ step }}
+{% endfor %}
+
+**证据强度**: {{ method.evidence_strength | default('Emerging') }}
+
+**适用领域**: {{ method.data_domains | join(", ") }}
+
+**适用场景**: {{ method.applicable_scenarios }}
 
 **代表论文**: {{ method.representative_paper_refs | join("; ") if method.representative_paper_refs else "MATERIAL GAP" }}
 
@@ -701,7 +810,16 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 {% for item in report.paper_summaries %}
 ### {{ item.display_title or item.title }}
 
+**任务定义**: {{ item.task_definition or item.task }}
+
+**方法**: {{ item.method or "未识别" }}
+
 {{ item.summary }}
+
+**可复现性评估**: {{ item.reproducibility }}
+
+**结果/证据信号**: {{ item.results_signal }}
+
 {% if item.limitations %}
 
 局限与证据说明：{{ item.limitations | join("; ") }}
@@ -726,6 +844,11 @@ ZH_TEMPLATE = r"""# {{ report.title_zh }}
 ### 争议与限制性解释
 {% for item in report.synthesis.contradictions %}
 - {{ item }}
+{% endfor %}
+
+### 证据映射（Claim -> 论文）
+{% for claim in report.evidence_map %}
+- **{{ claim.claim_id }}（{{ claim.strength }}）**: {{ claim.claim }}；引用: {{ claim.citation_refs | join(", ") }}；证据基础: {{ claim.evidence_basis }}
 {% endfor %}
 
 ## 8. 核心论文表
@@ -860,7 +983,14 @@ Sources searched: {{ report.protocol.search_sources | join(", ") }}. Open PDFs w
 
 {{ report.field_overview.why_it_matters }}
 
+### Research Questions (RQ)
+{% for item in report.field_overview.research_questions %}
+- {{ item }}
+{% endfor %}
+
+### Evidence Scope
 **Evidence Scope Note**: {{ report.field_overview.scope_note }}
+**Applicable Domains**: {{ report.field_overview.applicable_domains | join(", ") }}
 
 ## 4. Main Method Families
 
@@ -870,6 +1000,17 @@ Sources searched: {{ report.protocol.search_sources | join(", ") }}. Open PDFs w
 **Core idea**: {{ method.core_idea }}
 
 **Typical pipeline**: {{ method.typical_pipeline }}
+
+**Pipeline steps**:
+{% for step in method.pipeline_steps %}
+- {{ step }}
+{% endfor %}
+
+**Evidence strength**: {{ method.evidence_strength | default('Emerging') }}
+
+**Data domains**: {{ method.data_domains | join(", ") }}
+
+**Applicable scenario**: {{ method.applicable_scenarios }}
 
 **Representative papers**: {{ method.representative_paper_refs | join("; ") if method.representative_paper_refs else "MATERIAL GAP" }}
 
@@ -889,7 +1030,16 @@ Sources searched: {{ report.protocol.search_sources | join(", ") }}. Open PDFs w
 {% for item in report.paper_summaries %}
 ### {{ item.display_title or item.title }}
 
+**Task definition**: {{ item.task_definition or item.task }}
+
+**Method**: {{ item.method or "unknown" }}
+
 {{ item.summary }}
+
+**Reproducibility**: {{ item.reproducibility }}
+
+**Evidence signal**: {{ item.results_signal }}
+
 {% if item.limitations %}
 
 Evidence limitations: {{ item.limitations | join("; ") }}
@@ -914,6 +1064,11 @@ Evidence limitations: {{ item.limitations | join("; ") }}
 ### Contradictions and Cautions
 {% for item in report.synthesis.contradictions %}
 - {{ item }}
+{% endfor %}
+
+### Evidence Map (Claim -> Papers)
+{% for claim in report.evidence_map %}
+- **{{ claim.claim_id }} ({{ claim.strength }})**: {{ claim.claim }}; refs: {{ claim.citation_refs | join(", ") }}; basis: {{ claim.evidence_basis }}
 {% endfor %}
 
 ## 8. Core Papers

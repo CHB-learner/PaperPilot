@@ -428,6 +428,189 @@ def search_acl_anthology(query: str, limit: int, since_year: int | None, source_
     return papers
 
 
+def search_papers_cool(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
+    per_source_limit = max(1, (limit + 1) // 2)
+    papers: list[Paper] = []
+    for source_mode in ("arxiv", "venue"):
+        papers.extend(_search_papers_cool_list(source_mode, query, per_source_limit, since_year))
+    return [p for p in papers if p.title][:limit]
+
+
+def _search_papers_cool_list(source_mode: str, query: str, limit: int, since_year: int | None) -> list[Paper]:
+    papers: list[Paper] = []
+    seen: set[str] = set()
+    per_page = min(20, max(1, limit))
+    offset = 0
+    max_pages = 2
+    for _ in range(max_pages):
+        fetch_limit = max(1, min(per_page, limit - len(papers)))
+        if fetch_limit <= 0:
+            break
+        url = f"https://papers.cool/{source_mode}/search?" + encode_query(
+            {
+                "query": query,
+                "skip": offset,
+                "show": fetch_limit,
+            }
+        )
+        text = safe_fetch(lambda: request_text(url, timeout=15), "")
+        if not text:
+            break
+        parsed = _parse_papers_cool_html(text, query, source_mode=source_mode)
+        if not parsed:
+            break
+        added = 0
+        for paper in parsed:
+            if since_year and paper.year and paper.year < since_year:
+                continue
+            if paper.doi:
+                dedupe_key = f"doi::{paper.doi.lower()}"
+            elif paper.arxiv_id:
+                dedupe_key = f"arxiv::{paper.arxiv_id.lower()}"
+            else:
+                paperscope_id = (paper.raw.get("identifiers") or {}).get("papers_cool_id")
+                dedupe_key = f"title::{paper.raw.get('query') or query}::{paper.title.lower()}"
+                if paperscope_id:
+                    dedupe_key = f"papers_cool::{paperscope_id}"
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            papers.append(paper)
+            added += 1
+        offset += fetch_limit
+        if added < fetch_limit:
+            break
+        if len(papers) >= limit:
+            break
+        rate_limit_pause(0.35)
+    return papers
+
+
+def _parse_papers_cool_html(html_content: str, query: str, source_mode: str) -> list[Paper]:
+    panels = re.finditer(
+        r'<div id="(?P<paper_id>[^"]+)" class="panel paper"[^>]*>(?P<body>.*?)</div>',
+        html_content,
+        re.S,
+    )
+    papers: list[Paper] = []
+    for match in panels:
+        raw_id = match.group("paper_id")
+        body = match.group("body")
+        paper = _parse_papers_cool_panel(raw_id, body, query, source_mode)
+        if paper:
+            papers.append(paper)
+    return papers
+
+
+
+def _parse_papers_cool_panel(raw_id: str, body: str, query: str, source_mode: str) -> Paper | None:
+    title = _extract_papers_cool_text(body, rf'title-{re.escape(raw_id)}"[^>]*>(?P<value>.*?)</a>')
+    if not title:
+        return None
+    title = compact_text(title)
+    if not title:
+        return None
+
+    link_match = re.search(rf'<a id="title-{re.escape(raw_id)}"[^>]*href="(?P<url>[^"]+)"', body)
+    href = (link_match.group("url") if link_match else "").strip()
+    url = _normalize_papers_cool_url(href)
+
+    abstract = compact_text(_extract_papers_cool_text(body, rf'summary-{re.escape(raw_id)}"[^>]*>(?P<value>.*?)</p>'))
+    authors = _extract_papers_cool_authors(raw_id, body)
+    subjects = _extract_papers_cool_text(
+        body,
+        rf'subjects-{re.escape(raw_id)}"[^>]*>(?P<value>.*?)</p>',
+        fallback="",
+    )
+    venue = _venue_from_papers_cool(source_mode, raw_id)
+    pdf = re.search(rf'<a id="pdf-{re.escape(raw_id)}"[^>]*data="(?P<pdf>[^"]+)"', body)
+    pdf_url = pdf.group("pdf").strip() if pdf else None
+    date_text = _extract_papers_cool_text(
+        body,
+        rf'date-{re.escape(raw_id)}"[^>]*>(?P<value>.*?)</p>',
+        fallback="",
+    )
+    year = None
+    if date_text:
+        date_match = re.search(r"(\d{4})", date_text)
+        year = _safe_int(date_match.group(1)) if date_match else None
+    if year is None and source_mode == "arxiv":
+        arxiv_id_match = re.search(r"^(\d{4})\.\d+", raw_id)
+        if arxiv_id_match:
+            year = _safe_int(arxiv_id_match.group(1))
+    if year is None and source_mode != "arxiv":
+        fallback_match = re.search(r"^(\d{4})", raw_id) or re.search(r"\.(\d{4})", raw_id)
+        year = _safe_int(fallback_match.group(1)) if fallback_match else None
+
+    arxiv_id: str | None = None
+    if source_mode == "arxiv":
+        if href:
+            arxiv_id = href.rstrip("/").rsplit("/", 1)[-1] if "/arxiv/" in href else None
+        if not arxiv_id and re.match(r"^\d{4}\.\d{4,}(?:v\d+)?$", raw_id):
+            arxiv_id = raw_id
+
+    return Paper(
+        title=title,
+        authors=authors,
+        year=year,
+        venue=venue,
+        abstract=abstract or None,
+        arxiv_id=arxiv_id,
+        url=url,
+        pdf_url=pdf_url,
+        source="papers_cool",
+        sources=["papers_cool"],
+        raw={
+            "query": query,
+            "source_mode": source_mode,
+            "identifiers": {
+                "papers_cool_id": raw_id,
+            },
+            "subjects": [item for item in re.split(r",", subjects or "") if item.strip()],
+        },
+    )
+
+
+
+def _extract_papers_cool_text(body: str, pattern: str, *, fallback: str = "") -> str:
+    match = re.search(pattern, body, re.S)
+    if not match:
+        return fallback
+    raw = match.group("value")
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    return compact_text(html.unescape(text))
+
+
+def _extract_papers_cool_authors(raw_id: str, body: str) -> list[str]:
+    match = re.search(rf'authors-{re.escape(raw_id)}"[^>]*>(?P<value>.*?)</p>', body, re.S)
+    if not match:
+        return []
+    raw = match.group("value")
+    authors = [compact_text(html.unescape(name)) for name in re.findall(r'">([^<]+)</a>', raw)]
+    if authors:
+        return [author for author in authors if author]
+    fallback = re.sub(r"<[^>]+>", ",", raw)
+    return [compact_text(item) for item in fallback.split(",") if item.strip()]
+
+
+def _normalize_papers_cool_url(path_or_url: str | None) -> str | None:
+    if not path_or_url:
+        return None
+    value = path_or_url.strip()
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+    return f"https://papers.cool{value}" if value.startswith("/") else value
+
+
+def _venue_from_papers_cool(source_mode: str, raw_id: str) -> str:
+    if source_mode == "arxiv":
+        return "arXiv"
+    if "@" in raw_id:
+        return raw_id.split("@", 1)[1]
+    return source_mode
+
+
 def search_core(query: str, limit: int, since_year: int | None, source_config: SourceConfig | None = None) -> list[Paper]:
     api_key = configured_api_key("core", source_config)
     if not api_key:
@@ -886,6 +1069,7 @@ SEARCHERS = {
     "medrxiv": search_medrxiv,
     "dblp": search_dblp,
     "acl_anthology": search_acl_anthology,
+    "papers_cool": search_papers_cool,
     "core": search_core,
     "lens": search_lens,
     "ieee": search_ieee,

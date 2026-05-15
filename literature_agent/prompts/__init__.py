@@ -151,18 +151,76 @@ $payload
 
 Return JSON with:
 {
-  "field_overview": {"background":"...", "problem_definition":"...", "why_it_matters":"...", "scope_note":"..."},
+  "field_overview": {
+    "background":"...",
+    "problem_definition":"...",
+    "why_it_matters":"...",
+    "scope_note":"...",
+    "research_questions":["RQ1: ...", "RQ2: ..."],
+    "applicable_domains":["..."]
+  },
   "method_evolution": ["..."],
   "themes": [{"name":"...", "evidence_strength":"Strong|Moderate|Emerging", "citation_keys":["..."], "summary":"...", "core_idea":"...", "typical_pipeline":"...", "strengths":["..."], "limitations":["..."]}],
-  "method_taxonomy": [{"name":"...", "core_idea":"...", "typical_pipeline":"...", "representative_papers":["citation_key"], "strengths":["..."], "limitations":["..."]}],
-  "paper_summaries": [{"citation_key":"...", "title":"...", "summary":"...", "method_category":"...", "evidence_basis":"..."}],
+  "method_taxonomy": [{
+    "name":"...",
+    "core_idea":"...",
+    "pipeline_steps":["step 1", "step 2", "..."],
+    "typical_pipeline":"...",
+    "representative_papers":["citation_key"],
+    "data_domains":["CS","BioMed"],
+    "strengths":["..."],
+    "limitations":["..."],
+    "applicable_scenarios":"...",
+    "evidence_strength":"Strong|Moderate|Emerging"
+  }],
+  "paper_summaries": [{
+    "citation_key":"...",
+    "title":"...",
+    "research_question":"RQ1 / RQ2",
+    "task_definition":"...",
+    "method":"...",
+    "contributions":"...",
+    "results_signal":"...",
+    "reproducibility":"...",
+    "evidence_basis":"...",
+    "method_category":"...",
+    "limitations":["..."]
+  }],
   "method_comparison": [{"method_category":"...", "input":"...", "output":"...", "algorithm_pattern":"...", "typical_metrics":"...", "best_for":"...", "limitations":"...", "representative_papers":["citation_key"]}],
+  "evidence_map":[{"claim":"...", "citation_keys":["..."], "strength":"strong|moderate|emerging|gap", "basis":"..."}],
   "research_trends": ["..."],
   "contradictions": ["..."],
   "knowledge_gaps": ["..."],
   "follow_up_keywords": ["..."],
   "limitations": ["..."]
 }
+""",
+    ),
+    "synthesis_repair": PromptSpec(
+        prompt_id="synthesis_repair",
+        version="1.1.0",
+        role="SynthesisEditor",
+        description="Repair and strengthen a synthesis result against minimum completeness constraints.",
+        instructions="You are a strict report quality editor. Return only valid JSON.",
+        required_keys=("field_overview", "method_taxonomy", "paper_summaries", "method_comparison", "research_trends", "knowledge_gaps"),
+        template="""
+The first synthesis attempt missed required depth constraints. Improve it using only the provided matrix and current synthesis output.
+
+Input:
+Understanding: $understanding
+Plan: $plan
+Current synthesis:
+$synthesis
+Matrix:
+$matrix
+
+Constraints:
+- Every method family must map to at least one representative citation when possible.
+- Every core paper must keep a concrete summary with task, methodology, result signal, and reproducibility.
+- Include research questions and evidence strengths.
+- Use only material available from matrix/title/abstract and report uncertainty as "MATERIAL GAP".
+
+        Return JSON with the same schema used in the synthesis prompt.
 """,
     ),
     "abstract": PromptSpec(

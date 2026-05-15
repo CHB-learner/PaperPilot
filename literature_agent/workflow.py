@@ -28,6 +28,7 @@ from .ui import console, print_success, stage_done, stage_start
 from .user_corpus import load_user_corpus
 from .utils import create_task_dir, write_json
 from .verification import build_quality_gate, verify_corpus, verification_to_dict
+from . import __version__
 
 
 STAGES = [
@@ -357,7 +358,7 @@ def write_manifest(output_dir: Path, state: dict[str, Any], client) -> None:
     manifest = {
         "task_id": state["task_id"],
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "paperpilot_version": "1.3.3",
+        "paperpilot_version": __version__,
         "model": getattr(client, "model", None),
         "files": files,
     }

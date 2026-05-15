@@ -75,6 +75,7 @@ Default free sources:
 - bioRxiv / medRxiv
 - DBLP
 - ACL Anthology
+- Papers.cool
 
 Optional API-key sources:
 
@@ -172,6 +173,7 @@ Inside interactive mode, use `/sources` and `/doctor`.
 | Elsevier / Scopus | https://dev.elsevier.com/ |
 | Dimensions | https://docs.dimensions.ai/dsl/api.html |
 | DeepXiv / Agentic Data | https://data.rag.ac.cn/api/docs |
+| Papers.cool | https://papers.cool |
 
 ## 🧪 Quick Start
 
@@ -282,35 +284,45 @@ See `paperpilot --help` for full options and Chinese/English output.
 - Keep API keys out of git history.
 - Prefer `.gitignore` over manual cleanup.
 - Use semantic tags for releases and keep `README` + docs aligned.
+- Keep `.github/workflows/*`, `RELEASING.md`, `CHANGELOG.md` in sync when publishing.
 
 ## 🧭 Open source checklist
 
 - Ensure `~/.paperpilot/config.json`, `api.json`, and `.env` with credentials are never committed.
 - Add/keep `LICENSE` and `.gitignore`.
 - Add source code and tags before publishing release assets.
-- Publish GitHub Pages from the `main` branch `/docs`.
+- Publish GitHub Pages from `docs/`.
+- Keep versions in `pyproject.toml`, `literature_agent/__init__.py`, and generated manifests aligned.
 
-Suggested first-publish flow:
-
-```bash
-git add README.md README.zh-CN.md pyproject.toml literature_agent tests paperpilot_agent_flow.html .github .gitignore LICENSE
-git commit -m "Initial open source release"
-git branch -M main
-git remote add origin https://github.com/CHB-learner/PaperPilot.git
-git push -u origin main
-git tag v1.x.y
-git push origin v1.x.y
-```
-
-PyPI release steps:
+### One-command release
 
 ```bash
-python -m pip install build twine
-python -m build
-python -m twine upload dist/*
+# dry-run checks only
+./scripts/release_everywhere.sh --dry-run
+
+# normal release (pushed commit + tag + GH release + PyPI)
+export PYPI_TOKEN='pypi-...'
+./scripts/release_everywhere.sh
+
+# release without publishing to PyPI
+./scripts/release_everywhere.sh --no-pypi
 ```
+
+Suggested publish flow (full):
+
+```bash
+python -m unittest discover -s tests
+python -m compileall literature_agent
+./publish_pypi.sh --dry-run --version 1.4.4
+git add -A
+git commit -m "chore: release v1.4.4"
+git tag -a v1.4.4 -m "v1.4.4"
+git push origin main --tags
+./publish_pypi.sh --version 1.4.4
+```
+
+For GitHub Pages: enable Pages to deploy from `main` + `/docs`, or rely on `.github/workflows/gh-pages.yml`.
 
 ## 📚 Citation note
 
 If you use PaperPilot in your work, include the repository URL and version used so results are reproducible.
-

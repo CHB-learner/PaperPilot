@@ -142,7 +142,13 @@ def rank_papers(papers: list[Paper], keyword: str, since_year: int | None) -> li
     query_terms = _terms(keyword)
     current_year = 2026
     for paper in papers:
-        text = " ".join([paper.title, paper.abstract or "", paper.venue or ""]).lower()
+        text = " ".join(
+            [
+                _as_text(paper.title),
+                _as_text(paper.abstract),
+                _as_text(paper.venue),
+            ]
+        ).lower()
         term_hits = sum(1 for term in query_terms if term in text)
         relevance = term_hits / max(1, len(query_terms))
         recency = 0.0
@@ -189,6 +195,23 @@ def _title_tokens(title: str) -> set[str]:
         "via",
     }
     return {token for token in re.findall(r"[a-zA-Z0-9]+", title.lower()) if len(token) >= 4 and token not in stopwords}
+
+
+def _as_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, (list, tuple, set)):
+        return " ".join(_as_text(item) for item in value)
+    if isinstance(value, dict):
+        for key in ("display_name", "name", "title", "value", "text"):
+            if value.get(key):
+                return _as_text(value.get(key))
+        return " ".join(_as_text(item) for item in value.values())
+    return str(value)
 
 
 def _github_match_score(title_tokens: set[str], candidate_text: str) -> int:

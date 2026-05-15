@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from . import __version__
+
 import hashlib
 import json
 import re
@@ -14,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 
-USER_AGENT = "paperpilot/1.4.3 (mailto:research@example.com)"
+USER_AGENT = f"paperpilot/{__version__} (mailto:research@example.com)"
 
 
 @dataclass

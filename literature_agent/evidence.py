@@ -42,6 +42,20 @@ def build_evidence_ledger(canonical: dict[str, Any], literature_matrix: list[dic
     for idx, trend in enumerate(canonical.get("research_trends", []), start=1):
         claims.append(_claim(f"research_trend.{idx}", str(trend), _all_refs(paper_by_key), "moderate", "synthesis"))
 
+    for idx, item in enumerate(canonical.get("evidence_map", []), start=1):
+        if not isinstance(item, dict):
+            continue
+        citations = _map_citation_keys_to_labels(item.get("citation_keys") or item.get("citation_refs"), paper_by_key)
+        claims.append(
+            _claim(
+                str(item.get("claim_id") or f"synthesis_claim.{idx}"),
+                str(item.get("claim") or ""),
+                citations,
+                str(item.get("strength", "moderate")),
+                str(item.get("evidence_basis") or "synthesis"),
+            )
+        )
+
     return {
         "version": "1.2.0",
         "policy": "Each report-level claim should be tied to paper citations or marked MATERIAL GAP when evidence is insufficient.",
@@ -64,6 +78,38 @@ def _claim(claim_id: str, text: str, citations: list[str], strength: str, eviden
 
 def _all_refs(paper_by_key: dict[str, dict[str, Any]], limit: int = 8) -> list[str]:
     return [paper["citation_label"] for paper in list(paper_by_key.values())[:limit]]
+
+
+def _map_citation_keys_to_labels(keys: Any, paper_by_key: dict[str, dict[str, Any]]) -> list[str]:
+    refs: list[str] = []
+    if isinstance(keys, str):
+        candidates = [item.strip() for item in keys.split(",") if item.strip()]
+    elif isinstance(keys, list):
+        candidates = [str(item).strip() for item in keys if str(item).strip()]
+    else:
+        return refs
+    for candidate in candidates:
+        if candidate in paper_by_key:
+            refs.append(paper_by_key[candidate]["citation_label"])
+            continue
+        for paper in paper_by_key.values():
+            if candidate == paper["display_title"]:
+                refs.append(paper["citation_label"])
+                break
+        else:
+            ref = _normalize_candidate(candidate)
+            if ref:
+                refs.append(ref)
+    return list(dict.fromkeys(refs))
+
+
+def _normalize_candidate(value: str) -> str:
+    text = value.strip()
+    if not text:
+        return ""
+    if text.startswith("[") and "]" in text and text[1:3].isdigit():
+        return text
+    return f"{text}"
 
 
 def _refs_from_labels(labels: list[str], paper_by_key: dict[str, dict[str, Any]]) -> list[str]:
