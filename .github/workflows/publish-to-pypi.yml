@@ -30,7 +30,48 @@ jobs:
         run: |
           VERSION_INPUT="${{ github.event.inputs.version }}"
           if [ -n "${VERSION_INPUT}" ]; then
-            ./scripts/publish_pypi.sh --version "${VERSION_INPUT}" --dry-run
+            python - "${VERSION_INPUT}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          new_version = sys.argv[1].strip()
+          if not re.fullmatch(r"\d+\.\d+\.\d+", new_version):
+              raise SystemExit("version must look like 1.2.3")
+
+          pyproject = Path("pyproject.toml")
+          init_file = Path("literature_agent/__init__.py")
+
+          pyproject_text = pyproject.read_text(encoding="utf-8")
+          match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject_text, re.M)
+          if not match:
+              raise SystemExit("No project version found in pyproject.toml")
+          old_version = match.group(1)
+
+          pyproject.write_text(
+              re.sub(
+                  r'^version\s*=\s*"[^"]+"',
+                  f'version = "{new_version}"',
+                  pyproject_text,
+                  count=1,
+                  flags=re.M,
+              ),
+              encoding="utf-8",
+          )
+
+          init_text = init_file.read_text(encoding="utf-8")
+          if not re.search(r'__version__\s*=\s*"[^"]+"', init_text):
+              raise SystemExit("No __version__ assignment found in literature_agent/__init__.py")
+          updated_init = re.sub(
+              r'__version__\s*=\s*"[^"]+"',
+              f'__version__ = "{new_version}"',
+              init_text,
+              count=1,
+          )
+          init_file.write_text(updated_init, encoding="utf-8")
+
+          print(f"Bumped package metadata from {old_version} to {new_version}")
+          PY
           fi
       - name: Build distributions
         run: python -m build
