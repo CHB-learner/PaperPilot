@@ -357,7 +357,7 @@ def write_manifest(output_dir: Path, state: dict[str, Any], client) -> None:
     manifest = {
         "task_id": state["task_id"],
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "paperpilot_version": "1.3.1",
+        "paperpilot_version": "1.3.2",
         "model": getattr(client, "model", None),
         "files": files,
     }

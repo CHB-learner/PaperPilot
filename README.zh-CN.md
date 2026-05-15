@@ -62,6 +62,31 @@ PaperPilot 需要 OpenAI-compatible 的 LLM 配置，用于需求理解、检索
 PaperPilot
 ```
 
+第一次运行时，如果 `~/.paperpilot/config.json` 不存在，PaperPilot 会自动生成一个可编辑模板：
+
+```json
+{
+  "active": "default",
+  "profiles": {
+    "default": {
+      "api_key": "",
+      "base_url": "",
+      "model": "gpt-5.2"
+    }
+  },
+  "sources": {
+    "core": {"enabled": null, "api_key": "", "base_url": ""},
+    "lens": {"enabled": null, "api_key": "", "base_url": ""},
+    "ieee": {"enabled": null, "api_key": "", "base_url": ""},
+    "springer": {"enabled": null, "api_key": "", "base_url": ""},
+    "elsevier": {"enabled": null, "api_key": "", "base_url": ""},
+    "dimensions": {"enabled": null, "api_key": "", "base_url": ""}
+  }
+}
+```
+
+你可以直接编辑这个文件。没有 API key 的可选来源保持空字符串即可。`enabled: null` 表示自动策略：有 key 才启用，没 key 就不启用。
+
 也可以手动配置：
 
 ```bash
@@ -84,6 +109,17 @@ PaperPilot sources test core
 
 在交互模式里也可以直接输入 `/sources` 查看来源/API 状态表。
 
+可选来源 API Key 获取方式：
+
+| 来源 | 获取方式 |
+|---|---|
+| CORE | 在 [CORE API 页面](https://core.ac.uk/services/api) 申请 key。 |
+| Lens.org | 通过 [Lens API 文档](https://docs.api.lens.org/) 申请 Scholarly API access 或管理 token。 |
+| IEEE Xplore | 在 [IEEE Xplore API Getting Started](https://developer.ieee.org/getting_started) 注册并申请应用 key。 |
+| Springer Nature | 访问 [Springer Nature developer portal](https://dev.springernature.com/) 查看 API 文档并申请 key。 |
+| Elsevier / Scopus | 从 [Elsevier Developer Portal](https://dev.elsevier.com/) 和 [Scopus APIs getting started guide](https://www.elsevier.support/dataasaservice/answer/getting-started-guide-for-scopus-apis) 开始。 |
+| Dimensions | 参考 [Dimensions API access](https://docs.dimensions.ai/dsl/api.html)。Dimensions API 通常需要机构订阅或符合条件的研究访问。 |
+
 配置会缓存到：
 
 ```text
@@ -96,7 +132,7 @@ PaperPilot sources test core
 2. 用户配置：`~/.paperpilot/config.json`
 3. 旧版项目文件：`llmapi.txt`
 
-不要把 `api.json`、`llmapi.txt`、`.env` 或任何包含 API Key 的文件提交到 GitHub。
+不要把 `~/.paperpilot/config.json`、`api.json`、`llmapi.txt`、`.env` 或任何包含 API Key 的文件提交到 GitHub。
 
 ## 快速开始
 

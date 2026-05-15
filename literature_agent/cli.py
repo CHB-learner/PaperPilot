@@ -12,6 +12,7 @@ from .config import (
     config_delete,
     config_import,
     config_use,
+    ensure_config_initialized,
     load_app_config,
     load_user_config,
     print_profiles,
@@ -349,6 +350,7 @@ def main(argv: list[str] | None = None) -> int:
         return resume_run(argv[1:])
     if any(arg in {"--help", "-h"} for arg in argv):
         return language_help()
+    ensure_config_initialized()
     args = build_parser().parse_args(argv)
     if not args.keyword:
         return interactive_main(args)

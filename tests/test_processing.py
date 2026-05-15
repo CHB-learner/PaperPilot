@@ -5,11 +5,17 @@ from tempfile import TemporaryDirectory
 import argparse
 import contextlib
 import io
+import os
+import stat
+import subprocess
+import sys
 
 from literature_agent.config import (
     AppConfig,
     config_delete,
     config_use,
+    default_app_config,
+    ensure_config_initialized,
     load_app_config,
     load_user_config,
     mask_secret,
@@ -201,6 +207,35 @@ Paragraph.
             self.assertEqual(config.base_url, "https://api.deepseek.com")
             self.assertEqual(config.model, "deepseek-chat")
 
+    def test_default_config_template_contains_empty_optional_sources(self):
+        config = default_app_config()
+
+        self.assertEqual(config.active, "default")
+        self.assertIn("default", config.profiles)
+        self.assertEqual(config.profiles["default"].model, "gpt-5.2")
+        self.assertEqual(config.profiles["default"].api_key, "")
+        self.assertEqual(set(config.sources), {"core", "lens", "ieee", "springer", "elsevier", "dimensions"})
+        self.assertTrue(all(source.api_key == "" for source in config.sources.values()))
+        self.assertTrue(all(source.enabled is None for source in config.sources.values()))
+
+    def test_ensure_config_initialized_writes_template_once(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "paperpilot" / "config.json"
+
+            created = ensure_config_initialized(path)
+            first = path.read_text(encoding="utf-8")
+            second = ensure_config_initialized(path)
+            mode = stat.S_IMODE(path.stat().st_mode)
+
+            self.assertTrue(created)
+            self.assertFalse(second)
+            self.assertEqual(first, path.read_text(encoding="utf-8"))
+            self.assertEqual(mode, 0o600)
+            config = load_app_config(path)
+            self.assertEqual(config.active, "default")
+            self.assertFalse(config.profiles["default"].api_key)
+            self.assertNotIn("core", resolve_enabled_sources("auto", config.sources))
+
     def test_app_config_multiple_profiles(self):
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.json"
@@ -252,6 +287,52 @@ Paragraph.
         self.assertNotIn("core", resolve_enabled_sources("all"))
         enabled = resolve_enabled_sources("all", {"core": SourceConfig(api_key="core-key")})
         self.assertIn("core", enabled)
+
+    def test_cli_config_path_initializes_template_under_paperpilot_home(self):
+        with TemporaryDirectory() as tmp:
+            env = {**os.environ, "PAPERPILOT_HOME": tmp}
+            result = subprocess.run(
+                [sys.executable, "-m", "literature_agent.cli", "config", "path"],
+                cwd=Path(__file__).resolve().parents[1],
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            config_path = Path(tmp) / "config.json"
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(config_path.exists())
+            self.assertIn(str(config_path), result.stdout)
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(data["active"], "default")
+            self.assertEqual(data["sources"]["core"]["api_key"], "")
+
+            clear = subprocess.run(
+                [sys.executable, "-m", "literature_agent.cli", "config", "clear"],
+                cwd=Path(__file__).resolve().parents[1],
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(clear.returncode, 0, clear.stderr)
+            self.assertFalse(config_path.exists())
+
+            sources = subprocess.run(
+                [sys.executable, "-m", "literature_agent.cli", "sources", "list"],
+                cwd=Path(__file__).resolve().parents[1],
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(sources.returncode, 0, sources.stderr)
+            self.assertTrue(config_path.exists())
+            self.assertIn("core              disabled requires-key no-key", sources.stdout)
 
     def test_rich_source_summary_counts_configured_optional_sources(self):
         summary = source_status_summary({"core": SourceConfig(api_key="core-key")}, mode="auto")

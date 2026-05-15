@@ -138,11 +138,12 @@ def build_sources_parser() -> argparse.ArgumentParser:
 
 
 def run_sources_command(argv: list[str]) -> int:
-    from .config import load_app_config, save_app_config
+    from .config import ensure_config_initialized, load_app_config, save_app_config
     from .searchers import search_one_source
 
     parser = build_sources_parser()
     args = parser.parse_args(argv)
+    ensure_config_initialized()
     app_config = load_app_config()
     if args.command == "list":
         print_sources(app_config.sources)

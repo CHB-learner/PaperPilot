@@ -61,6 +61,31 @@ Interactive setup:
 PaperPilot
 ```
 
+On first run, PaperPilot creates an editable template at `~/.paperpilot/config.json` if the file does not already exist:
+
+```json
+{
+  "active": "default",
+  "profiles": {
+    "default": {
+      "api_key": "",
+      "base_url": "",
+      "model": "gpt-5.2"
+    }
+  },
+  "sources": {
+    "core": {"enabled": null, "api_key": "", "base_url": ""},
+    "lens": {"enabled": null, "api_key": "", "base_url": ""},
+    "ieee": {"enabled": null, "api_key": "", "base_url": ""},
+    "springer": {"enabled": null, "api_key": "", "base_url": ""},
+    "elsevier": {"enabled": null, "api_key": "", "base_url": ""},
+    "dimensions": {"enabled": null, "api_key": "", "base_url": ""}
+  }
+}
+```
+
+You can edit this file directly. Leave optional source keys empty if you do not have access. `enabled: null` means PaperPilot will enable that source automatically only after a key is configured.
+
 Manual setup:
 
 ```bash
@@ -83,6 +108,17 @@ PaperPilot sources test core
 
 Inside interactive mode, use `/sources` to view the same source/API status table without leaving the session.
 
+Where to get optional source API keys:
+
+| Source | How to get access |
+|---|---|
+| CORE | Request a key from the [CORE API page](https://core.ac.uk/services/api). |
+| Lens.org | Request Scholarly API access or manage tokens from the [Lens API documentation](https://docs.api.lens.org/). |
+| IEEE Xplore | Register and request an application key via [IEEE Xplore API Getting Started](https://developer.ieee.org/getting_started). |
+| Springer Nature | Use the [Springer Nature developer portal](https://dev.springernature.com/) for API documentation and keys. |
+| Elsevier / Scopus | Start from the [Elsevier Developer Portal](https://dev.elsevier.com/) and the [Scopus APIs getting started guide](https://www.elsevier.support/dataasaservice/answer/getting-started-guide-for-scopus-apis). |
+| Dimensions | See [Dimensions API access](https://docs.dimensions.ai/dsl/api.html). Dimensions API access usually requires an institutional subscription or eligible research access. |
+
 Configuration is stored in:
 
 ```text
@@ -95,7 +131,7 @@ Configuration priority:
 2. User config: `~/.paperpilot/config.json`
 3. Legacy project file: `llmapi.txt`
 
-Do not commit `api.json`, `llmapi.txt`, `.env`, or any file containing API keys.
+Do not commit `~/.paperpilot/config.json`, `api.json`, `llmapi.txt`, `.env`, or any file containing API keys.
 
 ## Quick Start
 

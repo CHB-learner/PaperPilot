@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .openai_client import OpenAIClient
-from .sources import SourceConfig, source_config_from_dict
+from .sources import SOURCE_SPECS, SourceConfig, source_config_from_dict
 from .utils import ApiConfig
 
 
@@ -22,6 +22,25 @@ class AppConfig:
     active: str | None = None
     profiles: dict[str, ApiConfig] = field(default_factory=dict)
     sources: dict[str, SourceConfig] = field(default_factory=dict)
+
+
+def default_app_config() -> AppConfig:
+    return AppConfig(
+        active="default",
+        profiles={"default": ApiConfig(api_key="", base_url="", model="gpt-5.2")},
+        sources={
+            name: SourceConfig(enabled=None, api_key="", base_url="")
+            for name, spec in SOURCE_SPECS.items()
+            if spec.requires_key
+        },
+    )
+
+
+def ensure_config_initialized(path: Path = CONFIG_PATH) -> bool:
+    if path.exists():
+        return False
+    save_app_config(default_app_config(), path)
+    return True
 
 
 def load_app_config(path: Path = CONFIG_PATH) -> AppConfig:
@@ -138,6 +157,8 @@ def build_config_parser() -> argparse.ArgumentParser:
 def run_config_command(argv: list[str]) -> int:
     parser = build_config_parser()
     args = parser.parse_args(argv)
+    if args.command != "clear":
+        ensure_config_initialized()
     if args.command == "set":
         return config_set(args)
     if args.command == "use":
