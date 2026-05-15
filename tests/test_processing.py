@@ -28,7 +28,7 @@ from literature_agent.planner import make_plan
 from literature_agent.protocol import build_protocol
 from literature_agent.processing import apply_github_filter, deduplicate, resolve_code_links
 from literature_agent.query import heuristic_understanding
-from literature_agent.report import build_canonical_report, render_html_reports, render_reports
+from literature_agent.report import build_canonical_report, markdown_report_to_html, render_html_reports, render_reports
 from literature_agent.searchers import search_dblp, search_europe_pmc, search_pubmed
 from literature_agent.sources import SourceConfig, resolve_enabled_sources
 from literature_agent.synthesis import build_literature_matrix, build_synthesis
@@ -157,6 +157,26 @@ class ProcessingTests(unittest.TestCase):
 
             self.assertTrue(path.exists())
             self.assertGreater(path.stat().st_size, 1000)
+
+    def test_html_renderer_keeps_markdown_table_rows_together(self):
+        markdown = """# Report
+
+| Source | Returned |
+|---|---:|
+
+| arXiv | 42 |
+
+| PubMed | 92 |
+
+Paragraph.
+"""
+
+        html = markdown_report_to_html(markdown, title="Report", lang="en")
+
+        self.assertEqual(html.count("<table>"), 1)
+        self.assertIn("<tbody>", html)
+        self.assertIn("<td>arXiv</td>", html)
+        self.assertIn("<td>PubMed</td>", html)
 
     def test_create_task_dir_is_unique(self):
         with TemporaryDirectory() as tmp:

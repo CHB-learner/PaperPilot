@@ -115,7 +115,10 @@ def build_canonical_report(
 
 
 def render_reports(canonical: dict[str, Any]) -> tuple[str, str]:
-    return Template(ZH_TEMPLATE).render(report=canonical), Template(EN_TEMPLATE).render(report=canonical)
+    return (
+        _compact_markdown_table_gaps(Template(ZH_TEMPLATE).render(report=canonical)),
+        _compact_markdown_table_gaps(Template(EN_TEMPLATE).render(report=canonical)),
+    )
 
 
 def render_html_reports(canonical: dict[str, Any]) -> tuple[str, str]:
@@ -409,6 +412,7 @@ def md(value: Any) -> str:
 
 
 def markdown_report_to_html(markdown_text: str, *, title: str, lang: str) -> str:
+    markdown_text = _compact_markdown_table_gaps(markdown_text)
     body: list[str] = []
     table_rows: list[list[str]] = []
     list_items: list[str] = []
@@ -466,6 +470,22 @@ def markdown_report_to_html(markdown_text: str, *, title: str, lang: str) -> str
         title=html.escape(title),
         body="\n".join(body),
     )
+
+
+def _compact_markdown_table_gaps(markdown_text: str) -> str:
+    lines = markdown_text.splitlines()
+    compacted: list[str] = []
+    for index, line in enumerate(lines):
+        if line.strip():
+            compacted.append(line)
+            continue
+        previous_is_table = bool(compacted) and compacted[-1].lstrip().startswith("|")
+        next_nonempty = next((candidate for candidate in lines[index + 1 :] if candidate.strip()), "")
+        next_is_table = next_nonempty.lstrip().startswith("|")
+        if previous_is_table and next_is_table:
+            continue
+        compacted.append(line)
+    return "\n".join(compacted).strip() + "\n"
 
 
 def _inline_html(text: Any) -> str:

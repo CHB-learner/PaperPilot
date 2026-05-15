@@ -27,13 +27,18 @@ def write_pdf_report(markdown_text: str, output_path: Path, *, title: str) -> No
     styles = _styles()
     story = [Paragraph(_escape(title), styles["Title"]), Spacer(1, 8)]
     table_buffer: list[list[str]] = []
-    for raw in markdown_text.splitlines():
+    lines = markdown_text.splitlines()
+    for index, raw in enumerate(lines):
         line = raw.rstrip()
         if line.startswith("|"):
             row = [clean_inline_markdown(cell.strip()) for cell in line.strip("|").split("|")]
             if not _is_separator(row):
                 table_buffer.append(row)
             continue
+        if not line and table_buffer:
+            next_nonempty = next((candidate for candidate in lines[index + 1 :] if candidate.strip()), "")
+            if next_nonempty.lstrip().startswith("|"):
+                continue
         if table_buffer:
             story.append(_table(table_buffer, styles))
             story.append(Spacer(1, 8))
