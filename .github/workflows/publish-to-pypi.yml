@@ -13,6 +13,8 @@ on:
 jobs:
   build-and-upload:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
     permissions:
       id-token: write
     steps:
@@ -37,5 +39,5 @@ jobs:
           ls -l dist
           python -m twine check dist/*
       - name: Publish to PyPI
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         uses: pypa/gh-action-pypi-publish@release/v1
