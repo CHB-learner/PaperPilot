@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.5] - 2026-05-15
+
+### Added
+- Release infrastructure refinement: `scripts/release_everywhere.sh` now supports end-to-end local validation + dry-run with clean push/PyPI gating.
+- CLI/docs alignment clean-up: release helper examples now use version placeholders and avoid stale manual version pinning in docs.
+- Publishing workflow polish: stable dry-run behavior and deterministic changelog extraction for GitHub release notes.
+
+### Changed
+- Updated version tracking to keep `pyproject.toml` and `literature_agent/__init__.py` in sync during one-command release flows.
+- Improved release safety: skip-push / no-pypi / dry-run semantics are now consistently applied across publishing stages.
+
 ## [1.4.4] - 2026-05-15
 
 ### Added

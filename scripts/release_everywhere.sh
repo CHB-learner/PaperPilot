@@ -63,6 +63,7 @@ done
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
+PYPI_HELPER="${ROOT_DIR}/scripts/publish_pypi.sh"
 
 if [[ "$DRY_RUN" == "true" ]]; then
   SKIP_PYPI="true"
@@ -73,10 +74,10 @@ fi
 
 if [[ -n "$VERSION" ]]; then
   echo "Target version: ${VERSION}"
-  ./publish_pypi.sh --version "$VERSION" --dry-run
+  "$PYPI_HELPER" --version "$VERSION" --dry-run
 else
   echo "No --version provided, using patch auto-bump flow in publish script."
-  ./publish_pypi.sh --dry-run
+  "$PYPI_HELPER" --dry-run
 fi
 
 NEW_VERSION="$(python - <<'PY'
@@ -149,14 +150,14 @@ fi
 
 if [[ "$SKIP_PUSH" == "true" ]]; then
   echo "skip-push: keep local package files only."
-  ./publish_pypi.sh --version "${NEW_VERSION}" --dry-run
+  "$PYPI_HELPER" --version "${NEW_VERSION}" --dry-run
   exit 0
 fi
 
 if [[ "${VERSION}" == "" ]]; then
-  ./publish_pypi.sh --version "${NEW_VERSION}"
+  "$PYPI_HELPER" --version "${NEW_VERSION}"
 else
-  ./publish_pypi.sh --version "${VERSION}"
+  "$PYPI_HELPER" --version "${VERSION}"
 fi
 
 echo "Release sync completed for v${NEW_VERSION}"

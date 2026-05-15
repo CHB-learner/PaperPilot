@@ -297,12 +297,12 @@ python -m twine check dist/*
 ### 发版建议
 
 ```bash
-./publish_pypi.sh --dry-run --version 1.4.4
+./publish_pypi.sh --dry-run --version <VERSION>
 git add -A
-git commit -m "chore: release v1.4.4"
-git tag -a v1.4.4 -m "v1.4.4"
+git commit -m "chore: release v<VERSION>"
+git tag -a v<VERSION> -m "v<VERSION>"
 git push origin main --tags
-./publish_pypi.sh --version 1.4.4
+./publish_pypi.sh --version <VERSION>
 ```
 
 ## 🌟 开源发布建议

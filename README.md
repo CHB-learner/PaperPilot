@@ -313,12 +313,12 @@ Suggested publish flow (full):
 ```bash
 python -m unittest discover -s tests
 python -m compileall literature_agent
-./publish_pypi.sh --dry-run --version 1.4.4
+./publish_pypi.sh --dry-run --version <VERSION>
 git add -A
-git commit -m "chore: release v1.4.4"
-git tag -a v1.4.4 -m "v1.4.4"
+git commit -m "chore: release v<VERSION>"
+git tag -a v<VERSION> -m "v<VERSION>"
 git push origin main --tags
-./publish_pypi.sh --version 1.4.4
+./publish_pypi.sh --version <VERSION>
 ```
 
 For GitHub Pages: enable Pages to deploy from `main` + `/docs`, or rely on `.github/workflows/gh-pages.yml`.
