@@ -181,6 +181,11 @@
       color: var(--ink);
     }
 
+    .button[disabled] {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
     .hero-card {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -322,6 +327,130 @@
       padding: 24px;
     }
 
+    .search-lab {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .search-panel,
+    .results-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 10px 34px rgba(15, 23, 42, 0.06);
+      padding: 22px;
+    }
+
+    .search-panel label {
+      display: block;
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .search-panel textarea,
+    .search-panel select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .search-panel textarea {
+      min-height: 164px;
+      resize: vertical;
+      padding: 14px;
+    }
+
+    .search-panel select {
+      height: 44px;
+      padding: 0 12px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-top: 14px;
+    }
+
+    .status-line {
+      min-height: 24px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .plan-box {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .plan-box h3,
+    .paper h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.35;
+    }
+
+    .plan-box p,
+    .paper p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .query-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .query-list span {
+      padding: 7px 9px;
+      border-radius: 8px;
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .paper-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .paper {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+    }
+
+    .paper-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .paper a {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
     .source-list {
       display: flex;
       flex-wrap: wrap;
@@ -425,7 +554,8 @@
     @media (max-width: 900px) {
       .hero-inner,
       .outputs,
-      .cta {
+      .cta,
+      .search-lab {
         grid-template-columns: 1fr;
       }
 
@@ -473,6 +603,7 @@
         </a>
         <div class="nav-links">
           <a href="#features">功能</a>
+          <a href="#search">在线检索</a>
           <a href="#workflow">流程</a>
           <a href="#sources">来源</a>
           <a href="#quickstart">开始</a>
@@ -526,6 +657,38 @@
             <h3>可观察运行</h3>
             <p>每次任务生成独立 run folder，保存 state、events、protocol、corpus、verification 和 quality gate。</p>
           </article>
+        </div>
+      </section>
+
+      <section id="search" class="section">
+        <div class="section-head">
+          <p class="kicker">Live Search</p>
+          <h2>直接输入调研需求，生成检索计划和候选论文。</h2>
+          <p>服务端使用 OpenAI-compatible LLM 拆解问题，再调用公开论文源返回可继续追踪的候选列表。</p>
+        </div>
+        <div class="search-lab">
+          <form class="search-panel" id="paper-search-form">
+            <label for="paper-query">调研需求</label>
+            <textarea id="paper-query" name="query" maxlength="1200" required>调研近三年大语言模型在自动化文献综述中的应用，要求包含评测方法和开源代码</textarea>
+            <div class="field-row">
+              <div>
+                <label for="paper-limit">结果数量</label>
+                <select id="paper-limit" name="maxPapers">
+                  <option value="8">8 篇</option>
+                  <option value="12" selected>12 篇</option>
+                  <option value="16">16 篇</option>
+                </select>
+              </div>
+              <button class="button primary" id="paper-search-button" type="submit">开始检索</button>
+            </div>
+            <div class="status-line" id="paper-search-status" role="status"></div>
+          </form>
+          <div class="results-panel" id="paper-search-results">
+            <div class="plan-box">
+              <h3>等待检索</h3>
+              <p>提交后这里会显示研究问题、检索式和候选论文。</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -622,5 +785,95 @@ PaperPilot --doctor</code></pre>
       </div>
     </footer>
   </div>
+  <script>
+    const searchForm = document.getElementById("paper-search-form");
+    const searchButton = document.getElementById("paper-search-button");
+    const searchStatus = document.getElementById("paper-search-status");
+    const searchResults = document.getElementById("paper-search-results");
+
+    searchForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(searchForm);
+      const query = String(formData.get("query") || "").trim();
+      const maxPapers = Number(formData.get("maxPapers") || 12);
+      if (!query) return;
+
+      searchButton.disabled = true;
+      searchStatus.textContent = "正在生成检索计划并查询论文源...";
+      searchResults.innerHTML = '<div class="plan-box"><h3>检索中</h3><p>通常需要 10 到 30 秒。</p></div>';
+
+      try {
+        const response = await fetch("/api/literature-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, maxPapers }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "检索失败");
+        }
+        renderSearchResults(data);
+        searchStatus.textContent = `完成：返回 ${data.papers.length} 篇候选论文，用时 ${Math.round(data.diagnostics.elapsedMs / 1000)} 秒。`;
+      } catch (error) {
+        searchResults.innerHTML = `<div class="plan-box"><h3>检索失败</h3><p>${escapeHtml(error.message || "请稍后重试。")}</p></div>`;
+        searchStatus.textContent = "检索失败";
+      } finally {
+        searchButton.disabled = false;
+      }
+    });
+
+    function renderSearchResults(data) {
+      const plan = data.plan || {};
+      const queries = Array.isArray(plan.search_queries) ? plan.search_queries : [];
+      const papers = Array.isArray(data.papers) ? data.papers : [];
+      searchResults.innerHTML = `
+        <div class="plan-box">
+          <h3>${escapeHtml(plan.research_question || data.query)}</h3>
+          <p>${escapeHtml((plan.inclusion_criteria || []).join("；"))}</p>
+          <div class="query-list">${queries.map((query) => `<span>${escapeHtml(query)}</span>`).join("")}</div>
+        </div>
+        <div class="paper-list">
+          ${papers.map(renderPaper).join("") || '<article class="paper"><h3>没有找到候选论文</h3><p>可以换一个更具体的研究需求。</p></article>'}
+        </div>
+      `;
+    }
+
+    function renderPaper(paper) {
+      const title = escapeHtml(paper.title || "Untitled");
+      const authors = Array.isArray(paper.authors) ? paper.authors.slice(0, 4).join(", ") : "";
+      const abstract = paper.abstract ? truncate(paper.abstract, 280) : "";
+      const url = paper.url ? escapeAttribute(paper.url) : "";
+      return `
+        <article class="paper">
+          <h3>${url ? `<a href="${url}" target="_blank" rel="noreferrer">${title}</a>` : title}</h3>
+          <div class="paper-meta">
+            <span>${escapeHtml([paper.year, paper.venue].filter(Boolean).join(" · ") || "Unknown venue")}</span>
+            <span>${escapeHtml(paper.source || "source")}</span>
+            ${paper.citationCount ? `<span>${paper.citationCount} citations</span>` : ""}
+          </div>
+          ${authors ? `<p>${escapeHtml(authors)}</p>` : ""}
+          ${abstract ? `<p>${escapeHtml(abstract)}</p>` : ""}
+        </article>
+      `;
+    }
+
+    function truncate(value, length) {
+      return value.length > length ? `${value.slice(0, length).trim()}...` : value;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[char]));
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replace(/`/g, "&#96;");
+    }
+  </script>
 </body>
 </html>

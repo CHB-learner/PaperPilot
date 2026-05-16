@@ -26,6 +26,8 @@ env/
 ENV/
 .env
 .env.*
+node_modules/
+.netlify/
 
 # Build / packaging
 build/
