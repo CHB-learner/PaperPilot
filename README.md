@@ -7,8 +7,9 @@
 [![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)](https://github.com/CHB-learner/PaperPilot)
 [![Reports](https://img.shields.io/badge/Reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)](https://pypi.org/project/paperpilot/)
 [![Workflow](https://img.shields.io/badge/Workflow-evidence--grounded-0891b2)](https://github.com/CHB-learner/PaperPilot)
+[![Online Demo](https://img.shields.io/badge/Online%20Demo-Netlify-00ad9f)](https://voluble-marshmallow-e2bba5.netlify.app/)
 
-[English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/)
+[English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/) | [Online demo](https://voluble-marshmallow-e2bba5.netlify.app/)
 
 <p align="center">
   <img src="docs/assets/paperpilot-hero.png" alt="PaperPilot - scholarly literature review agent" width="100%">
@@ -16,6 +17,8 @@
 
 PaperPilot is a **CLI research agent for scholarly literature review** across AI, biomedicine, and AI for Science.  
 It turns one user request into a traceable, evidence-based research workflow and generates bilingual reports (`zh/en`) in Markdown, HTML, and PDF.
+
+The Netlify online demo provides a lightweight browser experience: it uses an OpenAI-compatible LLM to generate search plans, queries public paper sources, and lets users download a lightweight Markdown or HTML report. The full PaperPilot CLI remains the complete workflow for screened corpora, PDF/full-text handling, evidence ledgers, bilingual PDF output, and Obsidian Wiki export.
 
 ## ✨ What PaperPilot does
 
@@ -35,6 +38,7 @@ Each run creates a dedicated folder under `runs/` with full state, logs, and int
 
 ### Core experience
 - Natural-language intake with LLM-assisted interpretation
+- Netlify online demo for lightweight search plans, public-source candidates, and downloadable Markdown/HTML reports
 - Interactive shell with:
   - `/model` to manage LLM profiles
   - `/sources` to inspect search source/API status
@@ -54,6 +58,7 @@ Each run creates a dedicated folder under `runs/` with full state, logs, and int
 - Consistent `[1][2][3]` citation mapping
 - Method taxonomy and evidence matrix
 - Markdown + HTML + PDF outputs with aligned content
+- Browser demo can download a lightweight Markdown/HTML briefing based on public metadata and abstracts
 - Final report view keeps up to 100 papers by default, without a hard minimum
 - Obsidian Wiki export with paper, method, topic, and claim notes
 
@@ -163,6 +168,18 @@ PaperPilot sources test core
 ```
 
 Inside interactive mode, use `/sources` and `/doctor`.
+
+### Netlify online demo configuration
+
+The hosted demo uses a Netlify Function at `/api/literature-search`. Configure these Netlify environment variables for the online experience:
+
+```text
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-v4-flash
+LLM_API_KEY=<your server-side API key>
+```
+
+Keep `LLM_API_KEY` server-side only. The frontend calls the Netlify Function and never embeds the key in browser code.
 
 ## 🔑 API source keys references
 
