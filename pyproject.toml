@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperpilot"
-version = "1.5.8"
+version = "1.5.9"
 description = "A CLI research agent for scholarly paper search, evidence synthesis, code discovery, PDF collection, bilingual reports, and Obsidian Wiki."
 readme = "README.md"
 requires-python = ">=3.10"

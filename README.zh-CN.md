@@ -221,17 +221,17 @@ Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis
 
 ```mermaid
 flowchart LR
-  U[用户需求] --> C[运行上下文]
-  C --> QA[需求理解]
-  QA --> PL[规划与协议]
-  PL --> ST[Source Registry 检索]
-  ST --> NB[语料标准化]
-  NB --> SC[核心/相关/排除分类]
-  SC --> VF[验证 + PDF/代码检查]
-  VF --> LM[文献矩阵]
-  LM --> QG[Quality Gate]
-  QG --> EL[Evidence Ledger]
-  EL --> RP[报告渲染（中英）]
+  U["用户需求"] --> C["运行上下文"]
+  C --> QA["需求理解"]
+  QA --> PL["规划与协议"]
+  PL --> ST["Source Registry 检索"]
+  ST --> NB["语料标准化"]
+  NB --> SC["核心 / 相关 / 排除分类"]
+  SC --> VF["验证 + PDF / 代码检查"]
+  VF --> LM["文献矩阵"]
+  LM --> QG["Quality Gate"]
+  QG --> EL["Evidence Ledger"]
+  EL --> RP["报告渲染：中英"]
 ```
 
 附带架构说明页：
@@ -351,5 +351,15 @@ export PYPI_TOKEN='pypi-...'
 # 不发布到 PyPI 的本地发版（如仅先推 GitHub）
 ./scripts/release_everywhere.sh --no-pypi
 ```
+
+## 🙏 致谢与参考项目
+
+PaperPilot 的设计参考了多个开源学术研究与 Agent 项目。感谢这些项目和作者公开高质量资料：
+
+- [LLMForEverybody](https://github.com/luhengshiwo/LLMForEverybody)：Agent 设计范式与学习资料。
+- [academic-research-skills](https://github.com/Imbad0202/academic-research-skills)：研究完整性、来源验证、结构化综合等思路。
+- [DeepTutor](https://github.com/HKUDS/DeepTutor)：Tool/Capability 风格的 Agent 架构启发。
+- [obsidian-wiki](https://github.com/ar9av/obsidian-wiki)：Obsidian Wiki 导出方向。
+- [Research-Paper-Writing-Skills](https://github.com/Master-cai/Research-Paper-Writing-Skills)、[research-writing-skill](https://github.com/Norman-bury/research-writing-skill)、[SLR-FC](https://github.com/drshahizan/SLR-FC)：文献综述、科研写作和系统综述流程参考。
 
 使用 PaperPilot 的场景中，建议在方法、输出和源码版本上给出明确版本号，保证复现。

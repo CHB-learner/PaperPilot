@@ -225,17 +225,17 @@ Intake -> Protocol -> Search -> Corpus -> Screening -> Verification -> Synthesis
 
 ```mermaid
 flowchart LR
-  U[User request] --> C[Run context]
-  C --> QA[Query understanding]
-  QA --> PL[Planning + Protocol]
-  PL --> ST[Source Registry search]
-  ST --> NB[Corpus normalization]
-  NB --> SC[Core/adjacent screening]
-  SC --> VF[Verification + PDF + code checks]
-  VF --> SY[Literature matrix]
-  SY --> QG[Quality gate + reflection]
-  QG --> EL[Evidence ledger]
-  EL --> RP[Report render (ZH/EN)]
+  U["User request"] --> C["Run context"]
+  C --> QA["Query understanding"]
+  QA --> PL["Planning + Protocol"]
+  PL --> ST["Source Registry search"]
+  ST --> NB["Corpus normalization"]
+  NB --> SC["Core / adjacent screening"]
+  SC --> VF["Verification + PDF + code checks"]
+  VF --> SY["Literature matrix"]
+  SY --> QG["Quality gate + reflection"]
+  QG --> EL["Evidence ledger"]
+  EL --> RP["Report render: ZH / EN"]
 ```
 
 ## 📁 Run artifacts
@@ -338,6 +338,16 @@ git push origin main --tags
 ```
 
 For GitHub Pages: enable Pages to deploy from `main` + `/docs`, or rely on `.github/workflows/gh-pages.yml`.
+
+## 🙏 Acknowledgements
+
+PaperPilot is shaped by ideas from open academic-research and agent projects. Thanks to these projects and their authors for making their work public:
+
+- [LLMForEverybody](https://github.com/luhengshiwo/LLMForEverybody) for Agent design-pattern learning material.
+- [academic-research-skills](https://github.com/Imbad0202/academic-research-skills) for research integrity, source verification, and structured synthesis inspiration.
+- [DeepTutor](https://github.com/HKUDS/DeepTutor) for Tool/Capability-style agent architecture ideas.
+- [obsidian-wiki](https://github.com/ar9av/obsidian-wiki) for the Obsidian Wiki export direction.
+- [Research-Paper-Writing-Skills](https://github.com/Master-cai/Research-Paper-Writing-Skills), [research-writing-skill](https://github.com/Norman-bury/research-writing-skill), and [SLR-FC](https://github.com/drshahizan/SLR-FC) for literature review, research writing, and systematic-review workflow references.
 
 ## 📚 Citation note
 
