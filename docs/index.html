@@ -616,10 +616,10 @@
         </a>
         <div class="nav-links">
           <a href="#features">功能</a>
-          <a href="#search">在线检索</a>
           <a href="#workflow">流程</a>
           <a href="#sources">来源</a>
           <a href="#quickstart">开始</a>
+          <a href="https://voluble-marshmallow-e2bba5.netlify.app/">在线体验</a>
           <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a>
         </div>
       </div>
@@ -630,9 +630,10 @@
         <div>
           <span class="eyebrow">AI Literature Review Agent</span>
           <h1>把一句调研需求，变成可审计的双语文献综述。</h1>
-          <p class="lead">PaperPilot 面向 AI、AI for Science 和交叉学科研究场景，自动完成需求理解、多源检索、论文筛选、代码仓库发现、开放 PDF 下载、证据综合，并生成中文和英文 Markdown、HTML、PDF 报告。</p>
+          <p class="lead">PaperPilot 面向 AI、AI for Science 和交叉学科研究场景，自动完成需求理解、多源检索、论文筛选、代码仓库发现、开放 PDF 下载、证据综合，并生成中文和英文 Markdown、HTML、PDF 报告。这个项目主页介绍完整 CLI workflow；在线体验在 Netlify 提供轻量检索入口。</p>
           <div class="actions">
             <a class="button primary" href="https://github.com/CHB-learner/PaperPilot">查看 GitHub</a>
+            <a class="button secondary" href="https://voluble-marshmallow-e2bba5.netlify.app/">在线体验</a>
             <a class="button secondary" href="https://pypi.org/project/paperpilot/">PyPI 安装</a>
           </div>
         </div>
@@ -670,38 +671,6 @@
             <h3>可观察运行</h3>
             <p>每次任务生成独立 run folder，保存 state、events、protocol、corpus、verification 和 quality gate。</p>
           </article>
-        </div>
-      </section>
-
-      <section id="search" class="section">
-        <div class="section-head">
-          <p class="kicker">Live Search</p>
-          <h2>直接输入调研需求，生成检索计划和候选论文。</h2>
-          <p>服务端使用 OpenAI-compatible LLM 拆解问题，再调用公开论文源返回可继续追踪的候选列表。</p>
-        </div>
-        <div class="search-lab">
-          <form class="search-panel" id="paper-search-form">
-            <label for="paper-query">调研需求</label>
-            <textarea id="paper-query" name="query" maxlength="1200" required>调研近三年大语言模型在自动化文献综述中的应用，要求包含评测方法和开源代码</textarea>
-            <div class="field-row">
-              <div>
-                <label for="paper-limit">结果数量</label>
-                <select id="paper-limit" name="maxPapers">
-                  <option value="10" selected>10 篇</option>
-                  <option value="30">30 篇</option>
-                  <option value="50">50 篇</option>
-                </select>
-              </div>
-              <button class="button primary" id="paper-search-button" type="submit">开始检索</button>
-            </div>
-            <div class="status-line" id="paper-search-status" role="status"></div>
-          </form>
-          <div class="results-panel" id="paper-search-results">
-            <div class="plan-box">
-              <h3>等待检索</h3>
-              <p>提交后这里会显示研究问题、检索式和候选论文。</p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -785,141 +754,21 @@ PaperPilot --doctor</code></pre>
         <div class="cta">
           <div>
             <h2>让文献调研像飞行计划一样可追踪。</h2>
-            <p>从关键词到证据链，从代码仓库到双语报告，PaperPilot 适合快速调研、方向梳理和 AI for Science 交叉主题探索。</p>
+            <p>从关键词到证据链，从代码仓库到双语报告，完整能力由本地 CLI workflow 提供；浏览器里的轻量在线体验适合快速试用检索计划和候选论文列表。</p>
           </div>
-          <a class="button secondary" href="https://github.com/CHB-learner/PaperPilot">Star on GitHub</a>
+          <div class="actions" style="margin-top:0;">
+            <a class="button secondary" href="https://voluble-marshmallow-e2bba5.netlify.app/">在线体验</a>
+            <a class="button secondary" href="https://github.com/CHB-learner/PaperPilot">Star on GitHub</a>
+          </div>
         </div>
       </section>
     </main>
 
     <footer>
       <div class="section" style="padding:0;">
-        PaperPilot · MIT License · <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a> · <a href="https://pypi.org/project/paperpilot/">PyPI</a>
+        PaperPilot · MIT License · <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a> · <a href="https://voluble-marshmallow-e2bba5.netlify.app/">Online demo</a> · <a href="https://pypi.org/project/paperpilot/">PyPI</a>
       </div>
     </footer>
   </div>
-  <script>
-    const searchForm = document.getElementById("paper-search-form");
-    const searchButton = document.getElementById("paper-search-button");
-    const searchStatus = document.getElementById("paper-search-status");
-    const searchResults = document.getElementById("paper-search-results");
-
-    searchForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const formData = new FormData(searchForm);
-      const query = String(formData.get("query") || "").trim();
-      const maxPapers = Number(formData.get("maxPapers") || 12);
-      if (!query) return;
-
-      searchButton.disabled = true;
-      searchStatus.textContent = "正在生成检索计划并查询论文源...";
-      searchResults.innerHTML = '<div class="plan-box"><h3>检索中</h3><p>通常需要 10 到 30 秒。</p></div>';
-
-      try {
-        const response = await fetch("/api/literature-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, maxPapers }),
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          const detail = data.diagnostics?.llm?.status ? `（${data.diagnostics.llm.status}）` : "";
-          throw new Error(`${data.error || "检索失败"}${detail}`);
-        }
-        renderSearchResults(data);
-        searchStatus.textContent = `完成：返回 ${data.papers.length} 篇候选论文，用时 ${Math.round(data.diagnostics.elapsedMs / 1000)} 秒。`;
-      } catch (error) {
-        searchResults.innerHTML = `<div class="plan-box"><h3>检索失败</h3><p>${escapeHtml(error.message || "请稍后重试。")}</p></div>`;
-        searchStatus.textContent = "检索失败";
-      } finally {
-        searchButton.disabled = false;
-      }
-    });
-
-    function renderSearchResults(data) {
-      const plan = data.plan || {};
-      const queries = Array.isArray(plan.search_queries) ? plan.search_queries : [];
-      const papers = Array.isArray(data.papers) ? data.papers : [];
-      const report = data.report || {};
-      searchResults.innerHTML = `
-        <div class="plan-box">
-          <h3>${escapeHtml(plan.research_question || data.query)}</h3>
-          <p>${escapeHtml((plan.inclusion_criteria || []).join("；"))}</p>
-          <div class="query-list">${queries.map((query) => `<span>${escapeHtml(query)}</span>`).join("")}</div>
-        </div>
-        ${renderDownloadActions(report)}
-        <div class="paper-list">
-          ${papers.map(renderPaper).join("") || '<article class="paper"><h3>没有找到候选论文</h3><p>可以换一个更具体的研究需求。</p></article>'}
-        </div>
-      `;
-      const markdownButton = document.getElementById("download-report-md");
-      const htmlButton = document.getElementById("download-report-html");
-      if (markdownButton && report.markdown) {
-        markdownButton.addEventListener("click", () => downloadText(`${report.filenameBase || "paperpilot-report"}.md`, report.markdown, "text/markdown;charset=utf-8"));
-      }
-      if (htmlButton && report.html) {
-        htmlButton.addEventListener("click", () => downloadText(`${report.filenameBase || "paperpilot-report"}.html`, report.html, "text/html;charset=utf-8"));
-      }
-    }
-
-    function renderDownloadActions(report) {
-      if (!report.markdown || !report.html) return "";
-      return `
-        <div class="download-actions" aria-label="下载轻量报告">
-          <button class="button secondary" id="download-report-md" type="button">下载 Markdown</button>
-          <button class="button secondary" id="download-report-html" type="button">下载 HTML</button>
-        </div>
-      `;
-    }
-
-    function renderPaper(paper) {
-      const title = escapeHtml(paper.title || "Untitled");
-      const authors = Array.isArray(paper.authors) ? paper.authors.slice(0, 4).join(", ") : "";
-      const abstract = paper.abstract ? truncate(paper.abstract, 280) : "";
-      const url = paper.url ? escapeAttribute(paper.url) : "";
-      return `
-        <article class="paper">
-          <h3>${url ? `<a href="${url}" target="_blank" rel="noreferrer">${title}</a>` : title}</h3>
-          <div class="paper-meta">
-            <span>${escapeHtml([paper.year, paper.venue].filter(Boolean).join(" · ") || "Unknown venue")}</span>
-            <span>${escapeHtml(paper.source || "source")}</span>
-            ${paper.citationCount ? `<span>${paper.citationCount} citations</span>` : ""}
-          </div>
-          ${authors ? `<p>${escapeHtml(authors)}</p>` : ""}
-          ${abstract ? `<p>${escapeHtml(abstract)}</p>` : ""}
-        </article>
-      `;
-    }
-
-    function truncate(value, length) {
-      return value.length > length ? `${value.slice(0, length).trim()}...` : value;
-    }
-
-    function downloadText(filename, content, type) {
-      const blob = new Blob([content], { type });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    function escapeHtml(value) {
-      return String(value).replace(/[&<>"']/g, (char) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      }[char]));
-    }
-
-    function escapeAttribute(value) {
-      return escapeHtml(value).replace(/`/g, "&#96;");
-    }
-  </script>
 </body>
 </html>

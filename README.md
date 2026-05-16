@@ -9,7 +9,7 @@
 [![Workflow](https://img.shields.io/badge/Workflow-evidence--grounded-0891b2)](https://github.com/CHB-learner/PaperPilot)
 [![Online Demo](https://img.shields.io/badge/Online%20Demo-Netlify-00ad9f)](https://voluble-marshmallow-e2bba5.netlify.app/)
 
-[English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/) | [Online demo](https://voluble-marshmallow-e2bba5.netlify.app/)
+[English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/) | [Online demo](https://voluble-marshmallow-e2bba5.netlify.app/) | [GitHub](https://github.com/CHB-learner/PaperPilot) | [PyPI](https://pypi.org/project/paperpilot/)
 
 <p align="center">
   <img src="docs/assets/paperpilot-hero.png" alt="PaperPilot - scholarly literature review agent" width="100%">

@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaperPilot Online Demo - 轻量文献检索</title>
+  <meta name="description" content="PaperPilot 在线体验：用 LLM 生成检索计划，查询公开论文源候选列表，并下载轻量 Markdown/HTML 报告。">
+  <meta property="og:title" content="PaperPilot Online Demo">
+  <meta property="og:description" content="LLM search plan, public paper candidates, and lightweight report downloads.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/paperpilot-hero.png">
+  <link rel="icon" href="assets/paperpilot-logo.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #dbe4ee;
+      --panel: #ffffff;
+      --soft: #f8fafc;
+      --blue: #2563eb;
+      --green: #059669;
+      --shadow: 0 22px 70px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #f6f8fb;
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(246, 248, 251, 0.88);
+      border-bottom: 1px solid rgba(219, 228, 238, 0.82);
+    }
+
+    .nav-inner,
+    .section,
+    .hero-inner {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .nav-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .nav-links a {
+      padding: 8px 10px;
+      border-radius: 8px;
+    }
+
+    .nav-links a:hover {
+      background: #e8eef6;
+      color: var(--ink);
+    }
+
+    .hero {
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 12% 14%, rgba(37, 99, 235, 0.12), transparent 30%),
+        radial-gradient(circle at 86% 22%, rgba(5, 150, 105, 0.12), transparent 26%),
+        linear-gradient(180deg, #f8fbff 0%, #eef4fa 100%);
+    }
+
+    .hero-inner {
+      padding: 54px 0 34px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    h1 {
+      margin: 18px 0 14px;
+      max-width: 880px;
+      font-size: clamp(38px, 6vw, 68px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 820px;
+      color: #334155;
+      font-size: 18px;
+      line-height: 1.75;
+      margin: 0;
+    }
+
+    .section {
+      padding: 36px 0 76px;
+    }
+
+    .search-lab {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .search-panel,
+    .results-panel,
+    .notice-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 10px 34px rgba(15, 23, 42, 0.06);
+      padding: 22px;
+    }
+
+    .search-panel label {
+      display: block;
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .search-panel textarea,
+    .search-panel select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .search-panel textarea {
+      min-height: 206px;
+      resize: vertical;
+      padding: 14px;
+    }
+
+    .search-panel select {
+      height: 44px;
+      padding: 0 12px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-top: 14px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 780;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      background: var(--ink);
+      color: white;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+    }
+
+    .button.secondary {
+      background: white;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .button[disabled] {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
+    .status-line {
+      min-height: 24px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .notice-panel {
+      margin-top: 14px;
+      background: #f8fafc;
+    }
+
+    .notice-panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    .notice-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .plan-box {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .plan-box h2,
+    .plan-box h3,
+    .paper h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .plan-box p,
+    .paper p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .query-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .query-list span {
+      padding: 7px 9px;
+      border-radius: 8px;
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .download-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 16px;
+    }
+
+    .download-actions .button {
+      min-height: 40px;
+      font-size: 14px;
+    }
+
+    .paper-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .paper {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+    }
+
+    .paper-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .paper a {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 28px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    footer .section {
+      padding: 0;
+    }
+
+    @media (max-width: 900px) {
+      .search-lab {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-links {
+        display: none;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .nav-inner,
+      .section,
+      .hero-inner {
+        width: min(100% - 28px, 1160px);
+      }
+
+      .field-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <div class="nav-inner">
+        <a class="brand" href="/">
+          <img src="assets/paperpilot-logo.svg" alt="">
+          <span>PaperPilot Online Demo</span>
+        </a>
+        <div class="nav-links">
+          <a href="https://chb-learner.github.io/PaperPilot/">Website</a>
+          <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a>
+          <a href="https://pypi.org/project/paperpilot/">PyPI</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-inner">
+        <span class="eyebrow">Online demo</span>
+        <h1>输入调研需求，生成检索计划和候选论文。</h1>
+        <p class="lead">这个在线体验使用服务端 LLM 生成英文检索式、研究问题和纳入标准，再查询公开论文源并生成可下载的轻量 Markdown/HTML 报告。完整 PDF、Evidence Ledger、Obsidian Wiki 和完整 PaperPilot CLI workflow 需要在本地运行。</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="search-lab">
+          <div>
+            <form class="search-panel" id="paper-search-form">
+              <label for="paper-query">调研需求</label>
+              <textarea id="paper-query" name="query" maxlength="1200" required>调研近三年大语言模型在自动化文献综述中的应用，要求包含评测方法和开源代码</textarea>
+              <div class="field-row">
+                <div>
+                  <label for="paper-limit">结果数量</label>
+                  <select id="paper-limit" name="maxPapers">
+                    <option value="10" selected>10 篇</option>
+                    <option value="30">30 篇</option>
+                    <option value="50">50 篇</option>
+                  </select>
+                </div>
+                <button class="button primary" id="paper-search-button" type="submit">开始检索</button>
+              </div>
+              <div class="status-line" id="paper-search-status" role="status"></div>
+            </form>
+            <aside class="notice-panel">
+              <h2>轻量在线体验</h2>
+              <p>这里不会在 Netlify 上运行完整 Python CLI，也不会抽取 PDF 全文。结果基于公开 API metadata/abstract，适合快速形成检索计划和候选列表。</p>
+            </aside>
+          </div>
+          <div class="results-panel" id="paper-search-results">
+            <div class="plan-box">
+              <h2>等待检索</h2>
+              <p>提交后这里会显示研究问题、英文检索式、候选论文和报告下载按钮。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="section">
+        PaperPilot Online Demo · <a href="https://chb-learner.github.io/PaperPilot/">Website</a> · <a href="https://github.com/CHB-learner/PaperPilot">GitHub</a> · <a href="https://pypi.org/project/paperpilot/">PyPI</a>
+      </div>
+    </footer>
+  </div>
+  <script>
+    const searchForm = document.getElementById("paper-search-form");
+    const searchButton = document.getElementById("paper-search-button");
+    const searchStatus = document.getElementById("paper-search-status");
+    const searchResults = document.getElementById("paper-search-results");
+
+    searchForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(searchForm);
+      const query = String(formData.get("query") || "").trim();
+      const maxPapers = Number(formData.get("maxPapers") || 10);
+      if (!query) return;
+
+      searchButton.disabled = true;
+      searchStatus.textContent = "正在生成检索计划并查询论文源...";
+      searchResults.innerHTML = '<div class="plan-box"><h2>检索中</h2><p>通常需要 10 到 30 秒。</p></div>';
+
+      try {
+        const response = await fetch("/api/literature-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, maxPapers }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          const detail = data.diagnostics?.llm?.status ? `（${data.diagnostics.llm.status}）` : "";
+          throw new Error(`${data.error || "检索失败"}${detail}`);
+        }
+        renderSearchResults(data);
+        searchStatus.textContent = `完成：返回 ${data.papers.length} 篇候选论文，用时 ${Math.round(data.diagnostics.elapsedMs / 1000)} 秒。`;
+      } catch (error) {
+        searchResults.innerHTML = `<div class="plan-box"><h2>检索失败</h2><p>${escapeHtml(error.message || "请稍后重试。")}</p></div>`;
+        searchStatus.textContent = "检索失败";
+      } finally {
+        searchButton.disabled = false;
+      }
+    });
+
+    function renderSearchResults(data) {
+      const plan = data.plan || {};
+      const queries = Array.isArray(plan.search_queries) ? plan.search_queries : [];
+      const papers = Array.isArray(data.papers) ? data.papers : [];
+      const report = data.report || {};
+      searchResults.innerHTML = `
+        <div class="plan-box">
+          <h2>${escapeHtml(plan.research_question || data.query)}</h2>
+          <p>${escapeHtml((plan.inclusion_criteria || []).join("；"))}</p>
+          <div class="query-list">${queries.map((query) => `<span>${escapeHtml(query)}</span>`).join("")}</div>
+        </div>
+        ${renderDownloadActions(report)}
+        <div class="paper-list">
+          ${papers.map(renderPaper).join("") || '<article class="paper"><h3>没有找到候选论文</h3><p>可以换一个更具体的研究需求。</p></article>'}
+        </div>
+      `;
+      const markdownButton = document.getElementById("download-report-md");
+      const htmlButton = document.getElementById("download-report-html");
+      if (markdownButton && report.markdown) {
+        markdownButton.addEventListener("click", () => downloadText(`${report.filenameBase || "paperpilot-report"}.md`, report.markdown, "text/markdown;charset=utf-8"));
+      }
+      if (htmlButton && report.html) {
+        htmlButton.addEventListener("click", () => downloadText(`${report.filenameBase || "paperpilot-report"}.html`, report.html, "text/html;charset=utf-8"));
+      }
+    }
+
+    function renderDownloadActions(report) {
+      if (!report.markdown || !report.html) return "";
+      return `
+        <div class="download-actions" aria-label="下载轻量报告">
+          <button class="button secondary" id="download-report-md" type="button">下载 Markdown</button>
+          <button class="button secondary" id="download-report-html" type="button">下载 HTML</button>
+        </div>
+      `;
+    }
+
+    function renderPaper(paper) {
+      const title = escapeHtml(paper.title || "Untitled");
+      const authors = Array.isArray(paper.authors) ? paper.authors.slice(0, 4).join(", ") : "";
+      const abstract = paper.abstract ? truncate(paper.abstract, 280) : "";
+      const url = paper.url ? escapeAttribute(paper.url) : "";
+      return `
+        <article class="paper">
+          <h3>${url ? `<a href="${url}" target="_blank" rel="noreferrer">${title}</a>` : title}</h3>
+          <div class="paper-meta">
+            <span>${escapeHtml([paper.year, paper.venue].filter(Boolean).join(" · ") || "Unknown venue")}</span>
+            <span>${escapeHtml(paper.source || "source")}</span>
+            ${paper.citationCount ? `<span>${paper.citationCount} citations</span>` : ""}
+          </div>
+          ${authors ? `<p>${escapeHtml(authors)}</p>` : ""}
+          ${abstract ? `<p>${escapeHtml(abstract)}</p>` : ""}
+        </article>
+      `;
+    }
+
+    function truncate(value, length) {
+      return value.length > length ? `${value.slice(0, length).trim()}...` : value;
+    }
+
+    function downloadText(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[char]));
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replace(/`/g, "&#96;");
+    }
+  </script>
+</body>
+</html>
