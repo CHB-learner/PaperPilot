@@ -11,7 +11,7 @@
 [English](README.md) | [中文](README.zh-CN.md) | [项目主页](https://chb-learner.github.io/PaperPilot/)
 
 <p align="center">
-  <img src="docs/assets/paperpilot-hero.svg" alt="PaperPilot - scholarly literature review agent" width="100%">
+  <img src="docs/assets/paperpilot-hero.png" alt="PaperPilot - scholarly literature review agent" width="100%">
 </p>
 
 PaperPilot 是一个面向 AI、生医与 AI for Science 场景的 **CLI 科研文献检索与综述 Agent**。  
