@@ -424,6 +424,19 @@
       font-weight: 750;
     }
 
+    .download-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 16px;
+    }
+
+    .download-actions .button {
+      min-height: 40px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
     .paper-list {
       display: grid;
       gap: 12px;
@@ -810,7 +823,8 @@ PaperPilot --doctor</code></pre>
         });
         const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.error || "检索失败");
+          const detail = data.diagnostics?.llm?.status ? `（${data.diagnostics.llm.status}）` : "";
+          throw new Error(`${data.error || "检索失败"}${detail}`);
         }
         renderSearchResults(data);
         searchStatus.textContent = `完成：返回 ${data.papers.length} 篇候选论文，用时 ${Math.round(data.diagnostics.elapsedMs / 1000)} 秒。`;
@@ -826,14 +840,34 @@ PaperPilot --doctor</code></pre>
       const plan = data.plan || {};
       const queries = Array.isArray(plan.search_queries) ? plan.search_queries : [];
       const papers = Array.isArray(data.papers) ? data.papers : [];
+      const report = data.report || {};
       searchResults.innerHTML = `
         <div class="plan-box">
           <h3>${escapeHtml(plan.research_question || data.query)}</h3>
           <p>${escapeHtml((plan.inclusion_criteria || []).join("；"))}</p>
           <div class="query-list">${queries.map((query) => `<span>${escapeHtml(query)}</span>`).join("")}</div>
         </div>
+        ${renderDownloadActions(report)}
         <div class="paper-list">
           ${papers.map(renderPaper).join("") || '<article class="paper"><h3>没有找到候选论文</h3><p>可以换一个更具体的研究需求。</p></article>'}
+        </div>
+      `;
+      const markdownButton = document.getElementById("download-report-md");
+      const htmlButton = document.getElementById("download-report-html");
+      if (markdownButton && report.markdown) {
+        markdownButton.addEventListener("click", () => downloadText(`${report.filenameBase || "paperpilot-report"}.md`, report.markdown, "text/markdown;charset=utf-8"));
+      }
+      if (htmlButton && report.html) {
+        htmlButton.addEventListener("click", () => downloadText(`${report.filenameBase || "paperpilot-report"}.html`, report.html, "text/html;charset=utf-8"));
+      }
+    }
+
+    function renderDownloadActions(report) {
+      if (!report.markdown || !report.html) return "";
+      return `
+        <div class="download-actions" aria-label="下载轻量报告">
+          <button class="button secondary" id="download-report-md" type="button">下载 Markdown</button>
+          <button class="button secondary" id="download-report-html" type="button">下载 HTML</button>
         </div>
       `;
     }
@@ -859,6 +893,18 @@ PaperPilot --doctor</code></pre>
 
     function truncate(value, length) {
       return value.length > length ? `${value.slice(0, length).trim()}...` : value;
+    }
+
+    function downloadText(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     }
 
     function escapeHtml(value) {
