@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.6.0] - 2026-05-16
+
+### Added
+- Added the Netlify online experience for LLM-planned public literature search.
+- Added lightweight Markdown and HTML report downloads in the browser demo.
+- Documented the hosted Netlify demo and DeepSeek OpenAI-compatible environment configuration.
+
+### Changed
+- Switched the Netlify online demo defaults to DeepSeek `deepseek-v4-flash`.
+- Updated online search result count options to 10, 30, and 50 papers.
+
 ## [1.5.3] - 2026-05-15
 
 ### Changed

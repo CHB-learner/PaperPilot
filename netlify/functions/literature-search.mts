@@ -57,7 +57,7 @@ export default async (req: Request, _context: Context) => {
     return json({ error: "Query must be between 8 and 1200 characters." }, 400);
   }
 
-  const maxPapers = Math.min(Math.max(Number(body.maxPapers || 12), 5), 24);
+  const maxPapers = Math.min(Math.max(Number(body.maxPapers || 10), 10), 50);
   const startedAt = Date.now();
   const llm: LlmDiagnostic = { status: "configured" };
   const plan = await buildSearchPlan(query, llm);
@@ -71,10 +71,11 @@ export default async (req: Request, _context: Context) => {
     );
   }
   const searchQueries = normalizeQueries(plan.search_queries, query);
+  const perSourceLimit = Math.min(25, Math.max(8, Math.ceil(maxPapers / Math.max(searchQueries.length, 1))));
   const batches = await Promise.all(
     searchQueries.flatMap((searchQuery) => [
-      searchSemanticScholar(searchQuery, 8),
-      searchOpenAlex(searchQuery, 8),
+      searchSemanticScholar(searchQuery, perSourceLimit),
+      searchOpenAlex(searchQuery, perSourceLimit),
     ]),
   );
   const papers = rankPapers(dedupePapers(batches.flat())).slice(0, maxPapers);
