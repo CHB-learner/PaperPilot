@@ -51,13 +51,14 @@ search_all = _legacy_search_all
 
 def run_v1_workflow(args: argparse.Namespace, client) -> int:
     output_dir, task_id = prepare_output_dir(args)
+    layout = output_layout(output_dir)
     events = EventLogger(output_dir)
     app_config = load_app_config()
     state = init_state(task_id, args, output_dir, client)
     write_state(output_dir, state)
     write_json(output_dir / "task.json", task_payload(task_id, args, output_dir))
-    write_json(output_dir / "prompt_manifest.json", prompt_manifest())
-    write_json(output_dir / "registries.json", registry_manifest(app_config.sources))
+    write_json(layout["planning"] / "prompt_manifest.json", prompt_manifest())
+    write_json(layout["planning"] / "registries.json", registry_manifest(app_config.sources))
     events.emit("start", "intake", "Run created", task_id=task_id, model=getattr(client, "model", None))
     console.rule("[bold cyan]PaperPilot Run")
     console.print(f"[bold]Task ID:[/bold] [cyan]{task_id}[/cyan]")
@@ -66,7 +67,7 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     mark_stage(output_dir, state, "intake", "running", events=events)
     stage_start(1, 9, "Intake", f"Understanding query: {args.keyword}")
     understanding = understand_query(args.keyword, client)
-    (output_dir / "query_understanding.md").write_text(understanding.to_markdown(), encoding="utf-8")
+    (layout["planning"] / "query_understanding.md").write_text(understanding.to_markdown(), encoding="utf-8")
     if understanding.needs_confirmation and not args.auto_confirm and getattr(args, "interaction", "auto") != "auto":
         answer = input("Keyword is broad or ambiguous. Continue with the recommended query? [y/N] ").strip().lower()
         if answer not in {"y", "yes"}:
@@ -80,15 +81,15 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     stage_start(2, 9, "Protocol", "Creating search plan and research protocol")
     plan = make_plan(understanding, args.max_papers, args.since_year, client, seed_search_terms=getattr(args, "seed_search_terms", None))
     protocol = build_protocol(understanding, plan, args.github_filter, client)
-    write_json(output_dir / "plan.json", plan.to_dict())
-    write_json(output_dir / "protocol.json", protocol.to_dict())
+    write_json(layout["planning"] / "plan.json", plan.to_dict())
+    write_json(layout["planning"] / "protocol.json", protocol.to_dict())
     mark_stage(output_dir, state, "protocol", "completed", events=events)
     stage_done("Protocol", {"queries": len(plan.search_queries), "sources": len(protocol.search_sources)})
 
     mark_stage(output_dir, state, "search", "running", events=events)
     stage_start(3, 9, "Search", "Querying source registry and optional user corpus")
     user_papers, user_corpus_log = load_user_corpus(getattr(args, "user_corpus", None))
-    write_json(output_dir / "user_corpus_log.json", user_corpus_log)
+    write_json(layout["planning"] / "user_corpus_log.json", user_corpus_log)
     if user_papers:
         events.emit("progress", "search", "Loaded user corpus", count=len(user_papers))
     min_report_papers = getattr(args, "min_report_papers", MIN_REPORT_PAPERS)
@@ -106,8 +107,8 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
             disable_sources=getattr(args, "disable_source", None) or [],
         )
     raw_papers = user_papers + searched_papers
-    write_json(output_dir / "source_diagnostics.json", source_diagnostics)
-    write_json(output_dir / "metadata.json", [paper.to_dict() for paper in raw_papers])
+    write_json(layout["search"] / "source_diagnostics.json", source_diagnostics)
+    write_json(layout["search"] / "metadata.json", [paper.to_dict() for paper in raw_papers])
     mark_stage(
         output_dir,
         state,
@@ -158,11 +159,11 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         excluded_items=excluded_items,
     )
     final_core_items = report_selection.items
-    write_json(output_dir / "corpus.json", [item.to_dict() for item in items])
-    write_json(output_dir / "core_papers.json", [item.to_dict() for item in core_items])
-    write_json(output_dir / "adjacent_papers.json", [item.to_dict() for item in adjacent_items])
-    write_json(output_dir / "excluded_papers.json", [item.to_dict() for item in excluded_items])
-    write_json(output_dir / "report_selection.json", report_selection.stats)
+    write_json(layout["corpus"] / "corpus.json", [item.to_dict() for item in items])
+    write_json(layout["corpus"] / "core_papers.json", [item.to_dict() for item in core_items])
+    write_json(layout["corpus"] / "adjacent_papers.json", [item.to_dict() for item in adjacent_items])
+    write_json(layout["corpus"] / "excluded_papers.json", [item.to_dict() for item in excluded_items])
+    write_json(layout["corpus"] / "report_selection.json", report_selection.stats)
     mark_stage(
         output_dir,
         state,
@@ -183,13 +184,18 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     if args.no_download:
         download_log = [{"title": paper.title, "status": "skipped", "reason": "--no-download"} for paper in final_papers]
     else:
-        download_log = download_pdfs(final_papers, output_dir / "pdfs", limit=args.pdf_limit)
-    write_json(output_dir / "download_log.json", download_log)
-    paper_notes = extract_downloaded_fulltext(download_log, output_dir)
+        download_log = download_pdfs(final_papers, layout["pdfs"], limit=args.pdf_limit)
+    write_json(layout["verification"] / "download_log.json", download_log)
+    paper_notes = extract_downloaded_fulltext(
+        download_log,
+        output_dir,
+        fulltext_dir=layout["fulltext"],
+        notes_path=layout["verification"] / "paper_notes.json",
+    )
     attach_fulltext_paths(final_papers, paper_notes)
-    write_json(output_dir / "ranked_papers.json", [item.paper.to_dict() for item in final_core_items])
+    write_json(layout["corpus"] / "ranked_papers.json", [item.paper.to_dict() for item in final_core_items])
     verification = verify_corpus(items, download_log)
-    write_json(output_dir / "verification.json", verification_to_dict(verification))
+    write_json(layout["verification"] / "verification.json", verification_to_dict(verification))
     mark_stage(output_dir, state, "verification", "completed", events=events)
     stage_done("Verification", download_status_counts(download_log))
 
@@ -198,8 +204,8 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     matrix_items = core_items + adjacent_items
     literature_matrix = build_literature_matrix(matrix_items)
     synthesis = build_synthesis(core_items, adjacent_items, literature_matrix, plan, protocol, client)
-    write_json(output_dir / "literature_matrix.json", literature_matrix)
-    write_json(output_dir / "synthesis.json", synthesis)
+    write_json(layout["synthesis"] / "literature_matrix.json", literature_matrix)
+    write_json(layout["synthesis"] / "synthesis.json", synthesis)
     mark_stage(output_dir, state, "synthesis", "completed", events=events)
     stage_done("Synthesis", {"matrix_rows": len(literature_matrix), "method_families": len(synthesis.get("method_taxonomy") or [])})
 
@@ -232,8 +238,8 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
             "shortfall": report_selection.shortfall,
         }
     )
-    write_json(output_dir / "quality_gate.json", quality_gate.to_dict())
-    write_json(output_dir / "reflection.json", reflection)
+    write_json(layout["verification"] / "quality_gate.json", quality_gate.to_dict())
+    write_json(layout["verification"] / "reflection.json", reflection)
     mark_stage(output_dir, state, "review", "completed", {"verdict": quality_gate.verdict}, events=events)
     stage_done("Review", {"verdict": quality_gate.verdict, "issues": len(quality_gate.issues)})
 
@@ -241,12 +247,12 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         shortfall = dict(report_selection.shortfall)
         shortfall["quality_gate"] = quality_gate.to_dict()
         shortfall["report_selection"] = report_selection.stats
-        write_json(output_dir / "shortfall.json", shortfall)
+        write_json(layout["verification"] / "shortfall.json", shortfall)
         mark_stage(output_dir, state, "report", "needs_user_attention", shortfall, events=events)
         write_manifest(output_dir, state, client)
         events.emit("warn", "report", "Report not generated because no report papers were available", **shortfall)
         console.print(
-            f"[yellow]Report not generated: unable to produce report due to insufficient screened evidence. See shortfall.json.[/yellow]"
+            f"[yellow]Report not generated: unable to produce report due to insufficient screened evidence. See verification/shortfall.json.[/yellow]"
         )
         return 2
 
@@ -275,29 +281,29 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
     )
     evidence_ledger = build_evidence_ledger(canonical, literature_matrix)
     review_agent_findings = run_review_agents(core_items, final_core_items, verification, canonical, evidence_ledger)
-    write_json(output_dir / "evidence_ledger.json", evidence_ledger)
-    write_json(output_dir / "review_agent_findings.json", review_agent_findings)
+    write_json(layout["verification"] / "evidence_ledger.json", evidence_ledger)
+    write_json(layout["verification"] / "review_agent_findings.json", review_agent_findings)
     canonical["evidence_ledger"] = evidence_ledger
     canonical["review_agents"] = review_agent_findings
-    write_json(output_dir / "report.canonical.json", canonical)
+    write_json(layout["reports"] / "report.canonical.json", canonical)
     zh, en = render_reports(canonical)
-    (output_dir / "report.zh.md").write_text(zh, encoding="utf-8")
-    (output_dir / "report.en.md").write_text(en, encoding="utf-8")
+    (layout["reports"] / "report.zh.md").write_text(zh, encoding="utf-8")
+    (layout["reports"] / "report.en.md").write_text(en, encoding="utf-8")
     zh_html, en_html = render_html_reports(canonical)
-    (output_dir / "report.zh.html").write_text(zh_html, encoding="utf-8")
-    (output_dir / "report.en.html").write_text(en_html, encoding="utf-8")
-    write_pdf_report(zh, output_dir / "report.zh.pdf", title=canonical["title_zh"])
-    write_pdf_report(en, output_dir / "report.en.pdf", title=canonical["title"])
+    (layout["reports"] / "report.zh.html").write_text(zh_html, encoding="utf-8")
+    (layout["reports"] / "report.en.html").write_text(en_html, encoding="utf-8")
+    write_pdf_report(zh, layout["reports"] / "report.zh.pdf", title=canonical["title_zh"])
+    write_pdf_report(en, layout["reports"] / "report.en.pdf", title=canonical["title"])
     obsidian_manifest = None
     if not getattr(args, "no_obsidian_wiki", False):
-        obsidian_manifest = write_obsidian_wiki(canonical, output_dir, task_id=task_id)
-        write_json(output_dir / "obsidian_wiki_manifest.json", obsidian_manifest)
+        obsidian_manifest = write_obsidian_wiki(canonical, output_dir, task_id=task_id, vault_dir=layout["obsidian"], reports_dir=layout["reports"])
+        write_json(layout["verification"] / "obsidian_wiki_manifest.json", obsidian_manifest)
     mark_stage(output_dir, state, "report", "completed", {"review_verdict": review_agent_findings["verdict"]}, events=events)
     stage_done(
         "Report",
         {
-            "files": "report.zh/en.md/html/pdf",
-            "wiki": "obsidian_wiki" if obsidian_manifest else "disabled",
+            "files": "reports/report.zh/en.md/html/pdf",
+            "wiki": "wiki/obsidian" if obsidian_manifest else "disabled",
             "review": review_agent_findings["verdict"],
         },
     )
@@ -333,6 +339,27 @@ def prepare_output_dir(args: argparse.Namespace) -> tuple[Path, str]:
         return output_dir, output_dir.name
     task_id, output_dir = create_task_dir(args.keyword)
     return output_dir, task_id
+
+
+def output_layout(output_dir: Path) -> dict[str, Path]:
+    layout = {
+        "planning": output_dir / "planning",
+        "search": output_dir / "search",
+        "corpus": output_dir / "corpus",
+        "verification": output_dir / "verification",
+        "synthesis": output_dir / "synthesis",
+        "reports": output_dir / "reports",
+        "assets": output_dir / "assets",
+        "pdfs": output_dir / "assets" / "pdfs",
+        "fulltext": output_dir / "assets" / "fulltext",
+        "wiki": output_dir / "wiki",
+        "obsidian": output_dir / "wiki" / "obsidian",
+    }
+    for name, path in layout.items():
+        if name == "obsidian":
+            continue
+        path.mkdir(parents=True, exist_ok=True)
+    return layout
 
 
 def task_payload(task_id: str, args: argparse.Namespace, output_dir: Path) -> dict[str, Any]:
@@ -424,8 +451,17 @@ def inspect_run(path_or_id: str) -> int:
         print(f"Run not found: {path_or_id}")
         return 1
     print(f"Run: {run_dir.resolve()}")
-    for filename in ["state.json", "source_diagnostics.json", "quality_gate.json", "review_agent_findings.json", "evidence_ledger.json", "reflection.json", "manifest.json"]:
-        path = run_dir / filename
+    inspect_files = [
+        ("state.json", ["state.json"]),
+        ("source_diagnostics.json", ["search/source_diagnostics.json", "source_diagnostics.json"]),
+        ("quality_gate.json", ["verification/quality_gate.json", "quality_gate.json"]),
+        ("review_agent_findings.json", ["verification/review_agent_findings.json", "review_agent_findings.json"]),
+        ("evidence_ledger.json", ["verification/evidence_ledger.json", "evidence_ledger.json"]),
+        ("reflection.json", ["verification/reflection.json", "reflection.json"]),
+        ("manifest.json", ["manifest.json"]),
+    ]
+    for filename, candidates in inspect_files:
+        path = next((run_dir / candidate for candidate in candidates if (run_dir / candidate).exists()), run_dir / candidates[0])
         if not path.exists():
             continue
         data = json.loads(path.read_text(encoding="utf-8"))

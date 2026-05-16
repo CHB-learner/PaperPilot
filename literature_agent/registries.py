@@ -33,10 +33,10 @@ TOOLS = [
     ToolManifest("crossref", "search", "Crossref DOI and venue metadata.", ["query", "since_year"], ["Paper[]"]),
     ToolManifest("openreview", "search", "OpenReview paper search and PDF links.", ["query", "since_year"], ["Paper[]"]),
     ToolManifest("github_resolver", "code", "Repository extraction and optional GitHub search.", ["Paper[]"], ["CodeArtifact[]"]),
-    ToolManifest("pdf_downloader", "pdf", "Open-access PDF download without paywall bypass.", ["Paper[]"], ["download_log.json", "pdfs/"]),
-    ToolManifest("fulltext_parser", "pdf", "Extract text from downloaded PDFs.", ["download_log.json"], ["fulltext/", "paper_notes.json"]),
-    ToolManifest("report_renderer", "report", "Render canonical report to Markdown, HTML, and PDF.", ["report.canonical.json"], ["report.zh.*", "report.en.*"]),
-    ToolManifest("obsidian_wiki_renderer", "report", "Render the canonical report into an Obsidian wikilink knowledge graph.", ["report.canonical.json"], ["obsidian_wiki/"]),
+    ToolManifest("pdf_downloader", "pdf", "Open-access PDF download without paywall bypass.", ["Paper[]"], ["verification/download_log.json", "assets/pdfs/"]),
+    ToolManifest("fulltext_parser", "pdf", "Extract text from downloaded PDFs.", ["verification/download_log.json"], ["assets/fulltext/", "verification/paper_notes.json"]),
+    ToolManifest("report_renderer", "report", "Render canonical report to Markdown, HTML, and PDF.", ["reports/report.canonical.json"], ["reports/report.zh.*", "reports/report.en.*"]),
+    ToolManifest("obsidian_wiki_renderer", "report", "Render the canonical report into an Obsidian wikilink knowledge graph.", ["reports/report.canonical.json"], ["wiki/obsidian/"]),
 ]
 
 
@@ -46,7 +46,7 @@ CAPABILITIES = [
         "Default AI literature review workflow.",
         ["intake", "protocol", "search", "corpus", "screening", "verification", "synthesis", "review", "report"],
         ["keyword", "LLM config"],
-        ["report.canonical.json", "report.zh.md", "report.en.md", "report.zh.html", "report.en.html", "report.zh.pdf", "report.en.pdf", "obsidian_wiki/"],
+        ["reports/report.canonical.json", "reports/report.zh.md", "reports/report.en.md", "reports/report.zh.html", "reports/report.en.html", "reports/report.zh.pdf", "reports/report.en.pdf", "wiki/obsidian/"],
         ["quality_gate", "review_agent_checks", "evidence_ledger"],
     ),
     CapabilityManifest(
@@ -54,15 +54,15 @@ CAPABILITIES = [
         "Stricter review mode with PRISMA-style accounting and stronger quality gates.",
         ["intake", "protocol", "search", "corpus", "screening", "verification", "synthesis", "review", "report"],
         ["keyword", "--mode systematic"],
-        ["quality_gate.json", "evidence_ledger.json", "report.*"],
+        ["verification/quality_gate.json", "verification/evidence_ledger.json", "reports/report.*"],
         ["source_verification", "citation_compliance"],
     ),
     CapabilityManifest(
         "code_reproducibility_review",
         "Assess whether papers have trustworthy public implementations.",
         ["corpus", "verification", "review"],
-        ["corpus.json", "verification.json"],
-        ["review_agent_findings.json"],
+        ["corpus/corpus.json", "verification/verification.json"],
+        ["verification/review_agent_findings.json"],
         ["code_confidence"],
     ),
     CapabilityManifest(

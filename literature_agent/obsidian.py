@@ -16,8 +16,11 @@ def write_obsidian_wiki(
     output_dir: Path,
     *,
     task_id: str,
+    vault_dir: Path | None = None,
+    reports_dir: Path | None = None,
 ) -> dict[str, Any]:
-    vault = output_dir / "obsidian_wiki"
+    vault = vault_dir or output_dir / "obsidian_wiki"
+    report_source_dir = reports_dir or output_dir
     for folder in ["papers", "methods", "topics", "claims", "_meta", "reports"]:
         (vault / folder).mkdir(parents=True, exist_ok=True)
 
@@ -58,7 +61,7 @@ def write_obsidian_wiki(
         written.append(str(path.relative_to(vault)))
 
     for filename in ["report.zh.md", "report.en.md"]:
-        source = output_dir / filename
+        source = report_source_dir / filename
         if source.exists():
             target = vault / "reports" / filename
             shutil.copyfile(source, target)
@@ -105,7 +108,7 @@ def _index_note(canonical: dict[str, Any], task_id: str) -> str:
                     "task_id": task_id,
                     "tags": ["paperpilot", "literature-review", "wiki"],
                     "provenance": "generated",
-                    "source_files": ["report.canonical.json"],
+                    "source_files": ["reports/report.canonical.json"],
                 }
             ),
             f"# {canonical.get('title', 'PaperPilot Literature Wiki')}",
@@ -151,7 +154,7 @@ def _paper_note(canonical: dict[str, Any], paper: dict[str, Any], task_id: str) 
                     "citation_key": paper.get("citation_key"),
                     "tags": ["paper", "paperpilot", f"role/{role}", f"method/{_tag_slug(method)}"],
                     "provenance": "metadata_or_abstract",
-                    "source_files": ["report.canonical.json", "ranked_papers.json"],
+                    "source_files": ["reports/report.canonical.json", "corpus/ranked_papers.json"],
                 }
             ),
             f"# {paper.get('citation_label')} {paper.get('title')}",
@@ -198,7 +201,7 @@ def _method_note(method: dict[str, Any], task_id: str) -> str:
                     "task_id": task_id,
                     "tags": ["method", "paperpilot", f"method/{_tag_slug(title)}"],
                     "provenance": "inferred",
-                    "source_files": ["synthesis.json", "report.canonical.json"],
+                    "source_files": ["synthesis/synthesis.json", "reports/report.canonical.json"],
                 }
             ),
             f"# {title}",
@@ -233,7 +236,7 @@ def _topic_note(topic: str, canonical: dict[str, Any], task_id: str) -> str:
                     "task_id": task_id,
                     "tags": ["topic", "paperpilot", f"topic/{_tag_slug(topic)}"],
                     "provenance": "generated",
-                    "source_files": ["plan.json", "protocol.json", "report.canonical.json"],
+                    "source_files": ["planning/plan.json", "planning/protocol.json", "reports/report.canonical.json"],
                 }
             ),
             f"# {topic}",
@@ -260,7 +263,7 @@ def _claim_note(claim: dict[str, Any], task_id: str) -> str:
                     "task_id": task_id,
                     "tags": ["claim", "paperpilot", f"evidence/{_tag_slug(str(claim.get('strength') or 'emerging'))}"],
                     "provenance": "inferred",
-                    "source_files": ["evidence_ledger.json", "report.canonical.json"],
+                    "source_files": ["verification/evidence_ledger.json", "reports/report.canonical.json"],
                 }
             ),
             f"# {title}",
@@ -300,7 +303,7 @@ def _taxonomy_note(canonical: dict[str, Any], task_id: str) -> str:
                     "task_id": task_id,
                     "tags": ["paperpilot", "taxonomy"],
                     "provenance": "generated",
-                    "source_files": ["report.canonical.json"],
+                    "source_files": ["reports/report.canonical.json"],
                 }
             ),
             "# PaperPilot Wiki Taxonomy",
@@ -396,6 +399,13 @@ def _topics(canonical: dict[str, Any]) -> list[str]:
 
 def _source_files(output_dir: Path) -> list[str]:
     names = [
+        "reports/report.canonical.json",
+        "corpus/ranked_papers.json",
+        "synthesis/synthesis.json",
+        "synthesis/literature_matrix.json",
+        "verification/evidence_ledger.json",
+        "verification/quality_gate.json",
+        "search/source_diagnostics.json",
         "report.canonical.json",
         "ranked_papers.json",
         "synthesis.json",

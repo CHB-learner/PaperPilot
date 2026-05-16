@@ -176,30 +176,16 @@ def parser_text(language: str) -> dict[str, str]:
   task.json               任务信息
   state.json              状态机进度
   manifest.json           运行产物清单
-  query_understanding.md  关键词理解
-  plan.json               检索计划
-  protocol.json           研究协议
-  ranked_papers.json      排序后的论文
-  corpus.json             带筛选标签的完整语料
-  verification.json       DOI/PDF/代码验证状态
-  quality_gate.json       质量门结果
-  literature_matrix.json  证据矩阵
-  synthesis.json          综合分析
-  report.canonical.json   中英文报告共用中间表示
-  report.zh.md            中文报告
-  report.en.md            英文报告
-  report.zh.html          中文 HTML 报告
-  report.en.html          英文 HTML 报告
-  report.zh.pdf           中文 PDF 报告
-  report.en.pdf           英文 PDF 报告
-  obsidian_wiki/          Obsidian 知识图谱
-  download_log.json       PDF 下载日志
-  pdfs/                   开放 PDF 文件
-  fulltext/               PDF 全文抽取文本
   events.jsonl            阶段事件流
-  source_diagnostics.json 来源覆盖与错误诊断
-  evidence_ledger.json    claim 级证据账本
-  review_agent_findings.json  复核 Agent 检查结果
+  planning/               关键词理解、检索计划、研究协议
+  search/                 原始检索元数据、来源诊断
+  corpus/                 语料、筛选标签、最终论文列表
+  verification/           验证、质量门、下载日志、证据账本
+  synthesis/              证据矩阵和综合分析
+  reports/                中英文 Markdown、HTML、PDF 报告
+  assets/pdfs/            开放 PDF 文件
+  assets/fulltext/        PDF 全文抽取文本
+  wiki/obsidian/          Obsidian 知识图谱
 """,
             "keyword": "研究关键词或主题，例如 RNA",
             "max_papers": "最终保留论文数量上限，默认 100",
@@ -211,7 +197,7 @@ def parser_text(language: str) -> dict[str, str]:
             "unpaywall_email": "Unpaywall 邮箱，用于补充开放 PDF 链接",
             "github_filter": "代码链接筛选：any 不过滤，required 只保留有代码，none 只保留无代码",
             "auto_confirm": "关键词宽泛或有歧义时，自动使用推荐方向继续",
-            "no_download": "跳过 PDF 下载，但仍写入 download_log.json",
+            "no_download": "跳过 PDF 下载，但仍写入 verification/download_log.json",
             "pdf_limit": "最多下载 PDF 数量",
             "github_search_limit": "主动搜索 GitHub 仓库的论文数量，默认 25",
             "mode": "报告模式：quick 快速摘要，apa 学术综述，systematic 系统综述框架；默认 apa",
@@ -223,7 +209,7 @@ def parser_text(language: str) -> dict[str, str]:
             "enable_source": "额外启用某个来源，可重复传入",
             "disable_source": "禁用某个来源，可重复传入",
             "doctor": "自检 LLM 连接和已配置 API key 的检索来源",
-            "no_obsidian_wiki": "不生成 obsidian_wiki/ 知识图谱",
+            "no_obsidian_wiki": "不生成 wiki/obsidian/ 知识图谱",
         }
     if language == "en":
         return {
@@ -243,30 +229,16 @@ Outputs:
   task.json               Task metadata
   state.json              Workflow state
   manifest.json           Run manifest
-  query_understanding.md  Query interpretation
-  plan.json               Search plan
-  protocol.json           Research protocol
-  ranked_papers.json      Ranked papers
-  corpus.json             Screened corpus with labels
-  verification.json       DOI/PDF/code verification
-  quality_gate.json       Quality gate result
-  literature_matrix.json  Evidence matrix
-  synthesis.json          Evidence synthesis
-  report.canonical.json   Shared bilingual report model
-  report.zh.md            Chinese report
-  report.en.md            English report
-  report.zh.html          Chinese HTML report
-  report.en.html          English HTML report
-  report.zh.pdf           Chinese PDF report
-  report.en.pdf           English PDF report
-  obsidian_wiki/          Obsidian knowledge graph
-  download_log.json       PDF download log
-  pdfs/                   Open-access PDFs
-  fulltext/               Extracted PDF text
   events.jsonl            Stage event stream
-  source_diagnostics.json Source coverage and errors
-  evidence_ledger.json    Claim-level evidence ledger
-  review_agent_findings.json  Review-agent findings
+  planning/               Query interpretation, plan, protocol
+  search/                 Raw metadata and source diagnostics
+  corpus/                 Corpus, screening labels, ranked papers
+  verification/           Verification, quality gate, logs, evidence
+  synthesis/              Literature matrix and synthesis
+  reports/                Bilingual Markdown, HTML, and PDF reports
+  assets/pdfs/            Open-access PDFs
+  assets/fulltext/        Extracted PDF text
+  wiki/obsidian/          Obsidian knowledge graph
 """,
             "keyword": "Research keyword or topic, e.g. RNA",
             "max_papers": "Maximum ranked papers to keep; default: 100",
@@ -278,7 +250,7 @@ Outputs:
             "unpaywall_email": "Unpaywall email for open PDF lookup",
             "github_filter": "Code filter: any keeps all, required keeps papers with code, none keeps papers without code",
             "auto_confirm": "Auto-confirm recommended query for broad or ambiguous keywords",
-            "no_download": "Skip PDF downloads but still write download_log.json",
+            "no_download": "Skip PDF downloads but still write verification/download_log.json",
             "pdf_limit": "Maximum number of PDFs to download",
             "github_search_limit": "Number of papers to check with GitHub search, default: 25",
             "mode": "Report mode: quick, apa, or systematic; default: apa",
@@ -290,7 +262,7 @@ Outputs:
             "enable_source": "Enable an additional source; repeatable",
             "disable_source": "Disable a source; repeatable",
             "doctor": "Check LLM connectivity and configured API-key paper sources",
-            "no_obsidian_wiki": "Do not generate obsidian_wiki/ knowledge graph output",
+            "no_obsidian_wiki": "Do not generate wiki/obsidian/ knowledge graph output",
         }
     return {
         "description": "科研文献检索 Agent / Scholarly literature search agent",
@@ -310,30 +282,16 @@ Outputs:
   task.json               任务信息 / task metadata
   state.json              状态机进度 / workflow state
   manifest.json           运行产物清单 / run manifest
-  query_understanding.md  关键词理解 / query interpretation
-  plan.json               检索计划 / search plan
-  protocol.json           研究协议 / research protocol
-  ranked_papers.json      排序后的论文 / ranked papers
-  corpus.json             完整筛选语料 / screened corpus
-  verification.json       验证状态 / verification status
-  quality_gate.json       质量门 / quality gate
-  literature_matrix.json  证据矩阵 / evidence matrix
-  synthesis.json          综合分析 / synthesis
-  report.canonical.json   双语报告中间表示 / shared report model
-  report.zh.md            中文报告 / Chinese report
-  report.en.md            英文报告 / English report
-  report.zh.html          中文 HTML 报告 / Chinese HTML report
-  report.en.html          英文 HTML 报告 / English HTML report
-  report.zh.pdf           中文 PDF 报告 / Chinese PDF report
-  report.en.pdf           英文 PDF 报告 / English PDF report
-  obsidian_wiki/          Obsidian 知识图谱 / Obsidian knowledge graph
-  download_log.json       PDF 下载日志 / PDF download log
-  pdfs/                   开放 PDF 文件 / open-access PDFs
-  fulltext/               PDF 文本抽取 / extracted PDF text
   events.jsonl            阶段事件流 / stage event stream
-  source_diagnostics.json 来源覆盖与错误诊断 / source coverage and errors
-  evidence_ledger.json    claim 级证据账本 / claim-level evidence ledger
-  review_agent_findings.json  复核 Agent 检查结果 / review-agent findings
+  planning/               规划文件 / planning artifacts
+  search/                 检索数据 / search metadata
+  corpus/                 语料与筛选 / corpus and screening
+  verification/           验证与质量检查 / verification and quality checks
+  synthesis/              综合分析 / synthesis artifacts
+  reports/                MD/HTML/PDF 报告 / MD/HTML/PDF reports
+  assets/pdfs/            PDF 文件 / PDF files
+  assets/fulltext/        全文抽取 / extracted fulltext
+  wiki/obsidian/          Obsidian 知识图谱 / Obsidian knowledge graph
 """,
         "keyword": "研究关键词或主题，例如 RNA / Research keyword or topic, e.g. RNA",
         "max_papers": "最终保留论文数量上限，默认 100 / Maximum ranked papers to keep, default: 100",
@@ -345,7 +303,7 @@ Outputs:
         "unpaywall_email": "Unpaywall 邮箱，用于补充开放 PDF 链接 / Unpaywall email for open PDF lookup",
         "github_filter": "代码链接筛选：any 不过滤，required 只保留有代码，none 只保留无代码 / Code filter: any|required|none",
         "auto_confirm": "关键词宽泛或有歧义时，自动使用推荐方向继续 / Auto-confirm recommended query for broad or ambiguous keywords",
-        "no_download": "跳过 PDF 下载，但仍写入 download_log.json / Skip PDF downloads but still write download_log.json",
+        "no_download": "跳过 PDF 下载，但仍写入 verification/download_log.json / Skip PDF downloads but still write verification/download_log.json",
         "pdf_limit": "最多下载 PDF 数量 / Maximum number of PDFs to download",
         "github_search_limit": "主动搜索 GitHub 仓库的论文数量，默认 25 / Number of papers to check with GitHub search, default: 25",
         "mode": "报告模式 quick|apa|systematic，默认 apa / Report mode, default: apa",
@@ -357,7 +315,7 @@ Outputs:
         "enable_source": "额外启用来源，可重复传入 / Enable an additional source; repeatable",
         "disable_source": "禁用来源，可重复传入 / Disable a source; repeatable",
         "doctor": "自检 LLM 和已配置 API-key 来源 / Check LLM and configured API-key sources",
-        "no_obsidian_wiki": "不生成 obsidian_wiki/ 知识图谱 / Do not generate obsidian_wiki/ output",
+        "no_obsidian_wiki": "不生成 wiki/obsidian/ 知识图谱 / Do not generate wiki/obsidian/ output",
     }
 
 
@@ -465,7 +423,7 @@ def run_agent(args: argparse.Namespace) -> int:
         print_error_panel(
             "Workflow failed",
             f"{type(exc).__name__}: {exc}\n\n"
-            "建议查看当前 run folder 中的 state.json、events.jsonl 和 source_diagnostics.json。完整 traceback 会继续输出，方便调试。",
+            "建议查看当前 run folder 中的 state.json、events.jsonl 和 search/source_diagnostics.json。完整 traceback 会继续输出，方便调试。",
         )
         raise
 

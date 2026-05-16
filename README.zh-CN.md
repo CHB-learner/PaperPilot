@@ -243,25 +243,21 @@ flowchart LR
 每次任务默认落在 `runs/<task-id>/`（或 `--output-dir` 指定目录），核心文件包括：
 
 - `task.json`、`state.json`、`events.jsonl`、`manifest.json`
-- `query_understanding.md`、`plan.json`、`protocol.json`
-- `metadata.json`、`user_corpus_log.json`、`corpus.json`
-- `core_papers.json`、`adjacent_papers.json`、`excluded_papers.json`
-- `ranked_papers.json`
-- `verification.json`、`download_log.json`、`fulltext/`、`paper_notes.json`
-- `literature_matrix.json`、`synthesis.json`、`quality_gate.json`
-- `evidence_ledger.json`、`review_agent_findings.json`
-- `report.canonical.json`、`report.zh.md`、`report.en.md`
-- `report.zh.html`、`report.en.html`、`report.zh.pdf`、`report.en.pdf`
-- `report_selection.json`，以及没有可报告论文时的 `shortfall.json`
-- `obsidian_wiki/`：Obsidian 知识图谱目录
-- `pdfs/`、`source_diagnostics.json`、`registries.json`、`prompt_manifest.json`
+- `planning/`：关键词理解、检索计划、研究协议、Prompt/Registry 清单
+- `search/`：原始标准化论文元数据和来源诊断
+- `corpus/`：完整语料、核心/邻近/排除集合、最终报告论文
+- `verification/`：验证结果、质量门、反思、下载日志、证据账本、复核结果
+- `synthesis/`：证据矩阵和综合分析
+- `reports/`：`report.canonical.json`、中英文 Markdown、HTML、PDF 报告
+- `assets/pdfs/` 与 `assets/fulltext/`：开放 PDF 和全文抽取结果
+- `wiki/obsidian/`：Obsidian 知识图谱目录
 
 ## 🧠 Obsidian Wiki
 
 每次成功运行默认都会生成：
 
 ```text
-runs/<task-id>/obsidian_wiki/
+runs/<task-id>/wiki/obsidian/
 ```
 
 这个目录可以直接作为 Obsidian vault 打开，核心结构包括：

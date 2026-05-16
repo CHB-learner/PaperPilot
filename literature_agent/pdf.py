@@ -55,8 +55,14 @@ def download_pdfs(papers: list[Paper], pdf_dir: Path, limit: int | None = None) 
     return logs
 
 
-def extract_downloaded_fulltext(download_log: list[dict], output_dir: Path) -> list[dict]:
-    fulltext_dir = output_dir / "fulltext"
+def extract_downloaded_fulltext(
+    download_log: list[dict],
+    output_dir: Path,
+    *,
+    fulltext_dir: Path | None = None,
+    notes_path: Path | None = None,
+) -> list[dict]:
+    fulltext_dir = fulltext_dir or output_dir / "fulltext"
     fulltext_dir.mkdir(parents=True, exist_ok=True)
     notes: list[dict] = []
     for item in download_log:
@@ -91,7 +97,7 @@ def extract_downloaded_fulltext(download_log: list[dict], output_dir: Path) -> l
                     "pdf_path": str(pdf_path),
                 }
             )
-    write_json(output_dir / "paper_notes.json", notes)
+    write_json(notes_path or output_dir / "paper_notes.json", notes)
     return notes
 
 

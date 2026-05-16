@@ -243,21 +243,18 @@ flowchart LR
 `runs/<task-id>/` will contain:
 
 - `task.json` / `state.json` / `events.jsonl` / `manifest.json`
-- `query_understanding.md` / `plan.json` / `protocol.json`
-- `metadata.json` / `corpus.json` / `core_papers.json`
-- `adjacent_papers.json` / `excluded_papers.json` / `ranked_papers.json`
-- `verification.json` / `download_log.json` / `fulltext/` / `paper_notes.json`
-- `literature_matrix.json` / `synthesis.json` / `quality_gate.json`
-- `evidence_ledger.json` / `review_agent_findings.json`
-- `report.canonical.json` / `report.zh.md` / `report.en.md`
-- `report.zh.html` / `report.en.html` / `report.zh.pdf` / `report.en.pdf`
-- `report_selection.json` / `shortfall.json` when no reportable papers are available
-- `obsidian_wiki/` with `index.md`, paper notes, method notes, topic notes, claim notes, and wiki lint metadata
-- `pdfs/` / `source_diagnostics.json` / `registries.json` / `prompt_manifest.json`
+- `planning/`: query understanding, search plan, protocol, prompt and registry manifests
+- `search/`: raw normalized metadata and source diagnostics
+- `corpus/`: screened corpus, core/adjacent/excluded sets, ranked report papers
+- `verification/`: verification records, quality gate, reflection, download log, evidence ledger, review findings
+- `synthesis/`: literature matrix and field-level synthesis
+- `reports/`: `report.canonical.json`, bilingual Markdown, HTML, and PDF reports
+- `assets/pdfs/` and `assets/fulltext/`: downloaded open PDFs and extracted full text
+- `wiki/obsidian/`: Obsidian knowledge graph with notes, wikilinks, and lint metadata
 
 ## 🧠 Obsidian Wiki
 
-Each successful run generates `runs/<task-id>/obsidian_wiki/` by default. Open that folder as an Obsidian vault to browse:
+Each successful run generates `runs/<task-id>/wiki/obsidian/` by default. Open that folder as an Obsidian vault to browse:
 
 - `index.md`: research entry point and reported-paper overview
 - `papers/`: one note per reported paper with citation label, PDF/code links, method family, and evidence basis
