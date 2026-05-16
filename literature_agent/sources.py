@@ -193,7 +193,7 @@ def run_sources_command(argv: list[str]) -> int:
         if SOURCE_SPECS[source].requires_key and not configured_api_key(source, cfg):
             print(f"Missing API key for source: {source}")
             return 1
-        papers = search_one_source(source, "RNA", limit=1, since_year=None, source_config=cfg)
+        papers = search_one_source(source, "test", limit=1, since_year=None, source_config=cfg)
         print(f"{source}: ok, returned {len(papers)} paper(s)")
         return 0
     parser.print_help()

@@ -155,6 +155,7 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         args.github_filter,
         max_papers=args.max_papers,
         min_report_papers=min_report_papers,
+        excluded_items=excluded_items,
     )
     final_core_items = report_selection.items
     write_json(output_dir / "corpus.json", [item.to_dict() for item in items])
@@ -245,7 +246,7 @@ def run_v1_workflow(args: argparse.Namespace, client) -> int:
         write_manifest(output_dir, state, client)
         events.emit("warn", "report", "Report not generated because no report papers were available", **shortfall)
         console.print(
-            f"[yellow]Report not generated: no core or adjacent papers were available. See shortfall.json.[/yellow]"
+            f"[yellow]Report not generated: unable to produce report due to insufficient screened evidence. See shortfall.json.[/yellow]"
         )
         return 2
 

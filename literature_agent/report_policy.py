@@ -33,6 +33,7 @@ def select_report_items(
     *,
     max_papers: int,
     min_report_papers: int = MIN_REPORT_PAPERS,
+    excluded_items: list[CorpusItem] | None = None,
 ) -> ReportSelection:
     selected: list[CorpusItem] = []
     seen: set[str] = set()
@@ -46,6 +47,7 @@ def select_report_items(
         "minimum_fill_count": 0,
         "code_filter_fallback_count": 0,
         "adjacent_fill_count": 0,
+        "excluded_fill_count": 0,
         "final_report_count": 0,
         "github_filter": github_filter,
         "selection_policy": "core_first_then_adjacent_until_max_papers",
@@ -63,6 +65,10 @@ def select_report_items(
 
     core_matching, core_not_matching = _partition_by_filter(core_items, github_filter)
     adjacent_matching, adjacent_not_matching = _partition_by_filter(adjacent_items, github_filter)
+    excluded_matching: list[CorpusItem] = []
+    excluded_not_matching: list[CorpusItem] = []
+    if excluded_items:
+        excluded_matching, excluded_not_matching = _partition_by_filter(excluded_items, github_filter)
 
     add(core_matching, "core", "Core paper satisfying the requested code filter.")
     if github_filter == "required" and min_report_papers > 0:
@@ -73,6 +79,16 @@ def select_report_items(
         add(adjacent_matching, "adjacent_fill", "Adjacent paper satisfying the requested code filter, used to meet the requested minimum report size.")
     if len(selected) < min_report_papers:
         add(adjacent_not_matching, "minimum_fill", "Adjacent paper used to meet the requested minimum report size.")
+    if (
+        len(selected) < min_report_papers
+        and min_report_papers > 0
+        and (excluded_matching or excluded_not_matching)
+    ):
+        add(excluded_matching, "excluded_fill", "Excluded paper used to meet requested minimum report size.")
+        add(excluded_not_matching, "minimum_fill", "Additional excluded paper used to meet requested minimum report size.")
+    if len(selected) < max_papers and not (core_items or adjacent_items) and (excluded_matching or excluded_not_matching):
+        add(excluded_matching, "excluded_fill", "Fallback paper used when no high-confidence candidates passed screening.")
+        add(excluded_not_matching, "minimum_fill", "Low-confidence excluded paper used for coverage fallback.")
     if len(selected) < max_papers:
         overflow = adjacent_matching if github_filter == "required" and min_report_papers == 0 else adjacent_matching + adjacent_not_matching
         add(overflow, "adjacent_overflow", "Additional adjacent paper included below max_papers.")
@@ -122,6 +138,7 @@ def _selection_counts(items: list[CorpusItem]) -> dict[str, int]:
         "minimum_fill_count": 0,
         "code_filter_fallback_count": 0,
         "adjacent_fill_count": 0,
+        "excluded_fill_count": 0,
     }
     for item in items:
         role = str((item.paper.raw or {}).get("report_role") or "")
@@ -135,6 +152,9 @@ def _selection_counts(items: list[CorpusItem]) -> dict[str, int]:
             counts["code_filter_fallback_count"] += 1
         if role == "adjacent_fill":
             counts["adjacent_fill_count"] += 1
+        if role == "excluded_fill":
+            counts["adjacent_report_count"] += 1
+            counts["excluded_fill_count"] += 1
     return counts
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import datetime as dt
 from collections import Counter, defaultdict
 from typing import Any
 
@@ -16,7 +17,7 @@ METHOD_PATTERNS = [
     ("Reinforcement Learning", ["reinforcement", "policy gradient", "reward"]),
     ("Evolutionary / Heuristic Optimization", ["evolutionary", "greedy", "levy", "optimization", "ensemble defect"]),
     ("Language Models", ["language model", "rwkv", "transformer", "foundation model"]),
-    ("Thermodynamic / Folding Engine", ["thermodynamic", "free energy", "mfe", "vienna", "mxfold"]),
+    ("Objective / Energy Modeling", ["thermodynamic", "free energy", "scoring", "energy", "mfe", "objective"]),
     ("Benchmark / Designability", ["benchmark", "eterna100", "designability", "probabilistic"]),
 ]
 
@@ -24,53 +25,53 @@ METHOD_PATTERNS = [
 METHOD_PROFILES: dict[str, dict[str, Any]] = {
     "Evolutionary / Heuristic Optimization": {
         "core_idea": (
-            "Discrete search over RNA sequences guided by folding objectives such as base-pair distance, "
-            "ensemble defect, sequence probability, and benchmark difficulty."
+            "Discrete optimization/search over candidate artifacts guided by interpretable objective terms, "
+            "including constraint violations, quality metrics, and task difficulty."
         ),
-        "typical_pipeline": "Initialize candidates, mutate or greedily edit positions, fold candidates via a folding engine, "
-        "score against target constraints, and keep improved sequences until convergence.",
+        "typical_pipeline": "Initialize candidates, mutate or greedily edit positions, score candidates against objectives, "
+        "and keep improved outputs until convergence.",
         "pipeline_steps": [
-            "Define structure and constraints.",
-            "Generate initial sequence pool.",
-            "Evaluate candidates with folding / structure scoring.",
+            "Define task constraints.",
+            "Generate initial candidate pool.",
+            "Evaluate candidates with objective scoring.",
             "Apply mutation / optimization updates.",
-            "Validate selected designs on benchmark tasks.",
+            "Validate selected solutions on benchmark tasks.",
         ],
         "data_domains": ["BioMed", "General ML"],
-        "input": "Target secondary structure, constraints, and optimization budget.",
-        "output": "Optimized nucleotide designs and difficulty-related metrics.",
-        "typical_metrics": "Solved target count, ensemble defect, structure matching, runtime.",
-        "best_for": "Secondary-structure baselines and interpretable optimization pipelines.",
+        "input": "Task constraints and optimization budget.",
+        "output": "Optimized candidate outputs and difficulty-related metrics.",
+        "typical_metrics": "Solved target count, robustness, consistency, runtime.",
+        "best_for": "Interpretable optimization pipelines with explicit objective control.",
         "strengths": ["Interpretable objectives", "No heavy model training needed", "Strong as a comparison baseline"],
         "limitations": [
-            "Scales poorly for long sequences",
-            "Sensitive to folding-engine configuration",
-            "Coverage bias toward secondary-structure formulations",
+            "Scales poorly for long candidate spaces",
+            "Sensitive to objective design",
+            "Coverage bias toward single representation assumptions",
         ],
     },
     "Geometric Deep Learning": {
         "core_idea": (
-            "Represent RNA structure as graphs or geometric features and learn sequence-conditioned models "
-            "for structure-aware generation or scoring."
+            "Represent task-relevant structures as graphs or geometric features and learn "
+            "context-conditioned models for generation or scoring."
         ),
-        "typical_pipeline": "Encode structure with geometric descriptors, generate or evaluate candidates with neural networks, "
-        "and validate through folding-like constraints and structure metrics.",
+        "typical_pipeline": "Encode structured context, learn graph or coordinate-aware encoders, "
+        "generate or evaluate candidates, and validate through task-specific constraints and metrics.",
         "pipeline_steps": [
-            "Build 2D/3D structural representation.",
+            "Build a structural representation.",
             "Learn graph or coordinate-aware encoder.",
-            "Condition model on structural context.",
-            "Generate or score sequences.",
-            "Evaluate structural consistency and benchmark performance.",
+            "Condition the model on task context.",
+            "Generate or score candidates.",
+            "Evaluate consistency and benchmark performance.",
         ],
-        "data_domains": ["BioMed", "Computer Vision-inspired modeling"],
-        "input": "Target structure or geometric descriptors and optional folding context.",
-        "output": "Structure-aware sequence candidates.",
-        "typical_metrics": "Structural consistency, recovery, diversity, benchmark success.",
-        "best_for": "3D-aware inverse-design and geometry-constrained problems.",
+        "data_domains": ["BioMed", "General AI"],
+        "input": "Target constraints and geometric/structural descriptors.",
+        "output": "Context-aware candidate outputs.",
+        "typical_metrics": "Constraint compliance, diversity, benchmark success, robustness.",
+        "best_for": "Geometry- or structure-constrained design and synthesis tasks.",
         "strengths": [
-            "Captures non-local structure relationships",
-            "Useful for tertiary-structure-aware design",
-            "Generally stronger than pure secondary-structure search in 3D tasks",
+            "Captures non-local relationships between structured elements.",
+            "Useful when constraints can be represented with geometry-aware features.",
+            "Often improves representation quality on complex structured tasks.",
         ],
         "limitations": [
             "Needs structured structural data",
@@ -80,21 +81,21 @@ METHOD_PROFILES: dict[str, dict[str, Any]] = {
     },
     "Diffusion / Generative Models": {
         "core_idea": (
-            "Learn a conditional generative process that maps noise and structure conditions into sequence candidates."
+            "Learn a conditional generative process that maps noise and task conditions into candidate outputs."
         ),
-        "typical_pipeline": "Condition a denoising/flow model on structural constraints, iteratively sample sequences, "
-        "and post-validate with folding or downstream predictors.",
+        "typical_pipeline": "Condition a denoising/flow model on task constraints, iteratively sample candidates, "
+        "and post-validate with domain-specific predictors.",
         "pipeline_steps": [
             "Encode structural conditions.",
             "Run conditioned iterative sampling.",
             "Enforce validity constraints during denoising.",
-            "Rank candidates with structural / folding checks.",
+            "Rank candidates with domain-specific checks.",
             "Select robust candidates across multiple runs.",
         ],
         "data_domains": ["BioMed", "General AI"],
-        "input": "Structure conditions (sequence motif, secondary/tertiary constraints).",
-        "output": "Diverse candidate sequences from learned conditional distribution.",
-        "typical_metrics": "Sequence recovery, diversity, fold success, consistency.",
+        "input": "Task constraints (motifs, domain features, context conditions).",
+        "output": "Diverse task-consistent candidate solutions from learned conditional distribution.",
+        "typical_metrics": "Recovery rate, diversity, validity consistency, reproducibility.",
         "best_for": "One-to-many design settings and exploration of complex design spaces.",
         "strengths": [
             "Supports rich multimodal/structured generation",
@@ -113,13 +114,13 @@ METHOD_PROFILES: dict[str, dict[str, Any]] = {
         "pipeline_steps": [
             "Define structural/task reward.",
             "Train or fine-tune a generation policy.",
-            "Sample candidate sequences.",
+            "Sample candidate solutions.",
             "Score candidates with reward and penalties.",
             "Iterate on policy based on return.",
         ],
         "data_domains": ["BioMed", "General AI"],
         "input": "Structure-target constraints and reward design.",
-        "output": "Policy-optimized designs aligned with task objectives.",
+        "output": "Policy-optimized solutions aligned with task objectives.",
         "typical_metrics": "Reward, success rate, downstream fidelity, structural match.",
         "best_for": "Design objectives that are not recoverability-only.",
         "strengths": [
@@ -134,39 +135,39 @@ METHOD_PROFILES: dict[str, dict[str, Any]] = {
         ],
     },
     "Language Models": {
-        "core_idea": "Treat inverse design as conditional sequence modeling with explicit structure or control tokens.",
-        "typical_pipeline": "Train/adapt a sequence model, condition on structure, decode candidates, validate structure-compatibility.",
+        "core_idea": "Treat the task as conditional sequence-agnostic modeling with explicit task controls.",
+        "typical_pipeline": "Train/adapt a model, condition on constraints, decode candidates, and validate task-compatibility.",
         "pipeline_steps": [
             "Prepare structure-conditioned training data.",
             "Fine-tune or prompt-condition model.",
-            "Sample sequences under constraints.",
-            "Validate with folding-like checks.",
-            "Return top designs for benchmark protocols.",
+            "Sample candidates under constraints.",
+            "Validate with downstream task checks.",
+            "Return top-ranked solutions for benchmark protocols.",
         ],
         "data_domains": ["BioMed", "General NLP-inspired AI"],
         "input": "Structural context, constraints, optional prompt/conditioning.",
-        "output": "Conditioned design sequences.",
-        "typical_metrics": "Recovery, structural fidelity, controllability, generation quality.",
-        "best_for": "Scenarios with large sequence corpora and structured prompts.",
+        "output": "Conditioned task-aligned solutions.",
+        "typical_metrics": "Recovery, fidelity, controllability, and generation quality.",
+        "best_for": "Scenarios with large corpora and structured prompts for conditional generation.",
         "strengths": ["Scalable training", "Good long-range dependency modeling", "Can integrate control prompts"],
         "limitations": ["Need careful grounding", "Large-scale data bias", "High compute for pretraining/fine-tuning"],
     },
-    "Thermodynamic / Folding Engine": {
+    "Objective / Energy Modeling": {
         "core_idea": (
-            "Use explicit free-energy and folding-model objective as the scoring core, often for benchmarking and comparison."
+            "Use explicit objective scoring models as a core evaluation signal, often to compare solution quality, constraints, and protocol effects."
         ),
-        "typical_pipeline": "Predict folding ensembles, compute thermodynamic/energetic scores, and guide optimization / validation.",
+        "typical_pipeline": "Define task constraints, run scoring or objective functions, optimize candidate outputs, and validate with protocol checks.",
         "pipeline_steps": [
-            "Define folding objective and engine settings.",
-            "Predict candidate structures.",
-            "Compute energetic metrics and distance metrics.",
-            "Optimize sequence choices for target consistency.",
-            "Validate by independent checks and benchmark tasks.",
+            "Define task constraints and objective weights.",
+            "Generate candidate outputs with controllable settings.",
+            "Compute objective and constraint metrics.",
+            "Select updates by iterative optimization.",
+            "Validate selected outputs under explicit protocols.",
         ],
         "data_domains": ["BioMed", "Computational Chemistry-influenced"],
-        "input": "Target structure and scoring engine configuration.",
-        "output": "Thermodynamic scores and candidate sequences.",
-        "typical_metrics": "Free energy, ensemble defect, MFE agreement, fold match.",
+        "input": "Task constraints and scoring configuration.",
+        "output": "Objective scores and selected candidates.",
+        "typical_metrics": "Objective score, constraint adherence, benchmark stability, run consistency.",
         "best_for": "Interpretability and baseline standardization in benchmarks.",
         "strengths": [
             "Mechanistically interpretable",
@@ -175,13 +176,13 @@ METHOD_PROFILES: dict[str, dict[str, Any]] = {
         ],
         "limitations": [
             "Engine-dependent outcomes",
-            "Often misses full 3D constraints",
-            "Model mismatch can skew comparisons",
+            "Objective modeling may miss latent task factors",
+            "Benchmark sensitivity can dominate perceived gains",
         ],
     },
     "Benchmark / Designability": {
         "core_idea": (
-            "Analyze benchmark designability, difficulty and protocol sensitivity rather than introducing a single new model."
+            "Analyze benchmark difficulty and protocol sensitivity, rather than introducing a single new model."
         ),
         "typical_pipeline": "Define benchmark structures, run competing methods, inspect protocol effects, and estimate designability properties.",
         "pipeline_steps": [
@@ -191,7 +192,7 @@ METHOD_PROFILES: dict[str, dict[str, Any]] = {
             "Quantify sensitivity to engine/metric choices.",
             "Report method-dependent strengths and failure modes.",
         ],
-        "data_domains": ["BioMed", "Methodological Studies"],
+        "data_domains": ["AI for Science", "Methodological Studies"],
         "input": "Benchmark sets, method outputs, protocol metadata.",
         "output": "Difficulty estimates, designability observations, comparative reports.",
         "typical_metrics": "Solved rate, failure modes, ranking stability, protocol sensitivity.",
@@ -204,18 +205,18 @@ METHOD_PROFILES: dict[str, dict[str, Any]] = {
         ],
     },
     "Other Computational Method": {
-        "core_idea": "Method variations that do not match the major families but remain relevant to inverse folding.",
+        "core_idea": "Method variations that do not match major families but remain relevant to the target task.",
         "typical_pipeline": "Define task-specific objective and features, perform scoring or optimization, validate with available evidence.",
         "pipeline_steps": [
             "Define task-specific constraints",
             "Build objective/features",
             "Run optimization or prediction",
-            "Validate with folding / benchmark checks",
+            "Validate with benchmark checks",
             "Compare with adjacent evidence",
         ],
         "data_domains": ["BioMed", "General AI"],
-        "input": "Task-specific structure and sequence features.",
-        "output": "Predictions / candidate sequences.",
+        "input": "Task-specific structure, context, or representation features.",
+        "output": "Predictions and candidate task outputs.",
         "typical_metrics": "Task-dependent metrics in abstract or code.",
         "best_for": "Niche sub-problems not covered by main families.",
         "strengths": ["High flexibility", "Can target domain-specific constraints"],
@@ -348,7 +349,7 @@ def fallback_synthesis(
                 ],
             }
         )
-    years = [item.paper.year for item in core_items if item.paper.year]
+    years = [item.paper.year for item in core_items if isinstance(item.paper.year, int)]
     year_span = f"{min(years)}-{max(years)}" if years else "unknown years"
     paper_summaries = [
         _paper_summary(item, next((row for row in matrix if row["citation_key"] == item.citation_key), None))
@@ -365,30 +366,33 @@ def fallback_synthesis(
                 "are treated with lower confidence than items with open PDF."
             ),
             "research_questions": _compose_research_questions(protocol.research_question, plan),
-            "applicable_domains": ["BioMed", "AI for Science", "Computational Biology", "Method Development"],
+            "applicable_domains": _infer_applicable_domains(core_items),
         },
         "method_evolution": [
-            f"The core corpus spans {year_span}, with stronger optimization baselines early and learning-based structure-conditioned methods increasing recently.",
-            "A notable shift is from sequence-first optimization to structure-aware generation and multi-objective validation.",
-            "Recent work tends to separate generation quality from structural fidelity by introducing task-specific validation metrics.",
+            f"The core corpus spans {year_span}, with optimization-oriented baselines being complemented by learning-based pipelines in recent years.",
+            "Recent work often evolves from direct optimization baselines toward pipelines that combine objective design, generation, and validation steps.",
+            "Evidence quality is increasingly tied to protocol transparency, dataset definition, and reproducibility controls.",
         ],
         "themes": themes,
         "method_taxonomy": themes,
         "paper_summaries": paper_summaries,
         "method_comparison": method_comparison,
         "research_trends": [
-            "Secondary-structure inverse folding remains a foundational baseline through benchmarks and algorithmic baselines.",
-            "Tertiary-aware representations are rising because 3D constraints reduce ambiguity in sequence-to-structure mapping.",
-            "Generative and RL-augmented paradigms are increasingly used to jointly optimize structure and objective constraints.",
-            "Designability analyses are becoming necessary to interpret apparent benchmark gains across papers.",
+            "Algorithmic baselines remain central for reproducibility, while learning-based pipelines gain practical adoption.",
+            "Structured representations are rising because they encode constraints more explicitly.",
+            "Generative and optimization-aware paradigms are increasingly combined to balance quality and objective fidelity.",
+            "Benchmark analyses are becoming necessary to interpret gains caused by protocol and metric differences.",
         ],
         "contradictions": [
-            "Sequence recovery and structural fidelity are not equivalent; each paper must be read with that distinction.",
+            "Recovered solutions and deployment-level fidelity are not equivalent; each paper should be interpreted with this distinction.",
             "Code-filtered retrieval improves reproducibility but may lose historical, survey, or baseline works.",
         ],
         "evidence_map": [
             {
-                "claim": "Core methods are still clustered around structure-conditioned optimization and generative modeling.",
+                "claim": (
+                    "Core methods remain concentrated on model/algorithm design choices plus evaluation protocol details, "
+                    "with stronger evidence when method assumptions and validation conditions are explicitly linked."
+                ),
                 "citation_keys": [item.citation_key for item in core_items[:4]],
                 "strength": "moderate" if len(core_items) > 1 else "emerging",
                 "basis": "method taxonomy / corpus scan",
@@ -527,12 +531,30 @@ def _compose_background(core_items: list[CorpusItem], protocol: ResearchProtocol
         return (
             f"{protocol.research_question} 的核心问题与可复现性仍受到检索规模和可访问全文的限制，目前证据更偏向可公开验证的摘要级信息。"
         )
-    years = [item.paper.year for item in core_items if item.paper.year]
+    years = _coerced_years([item.paper.year for item in core_items])
     year_range = f"{min(years)}-{max(years)}" if years else "近年"
     return (
-        f"{protocol.research_question} 的检索语料主要覆盖 {year_range} 的 RNA / 结构生物学与相关计算方法。"
-        f" 关注点集中在如何从结构约束约束下生成满足要求的 RNA 序列，以及可比较的验证指标。"
+        f"{protocol.research_question} 的检索语料主要覆盖 {year_range} 之间的相关研究工作。"
+        " 目标在于梳理该问题在不同任务表述下的主流方法与证据边界。"
     )
+
+
+def _coerced_years(values: list[int | str | None]) -> list[int]:
+    years: list[int] = []
+    for value in values:
+        if isinstance(value, int):
+            year = value
+        elif isinstance(value, str):
+            match = re.search(r"(19|20)\d{2}", value)
+            year = int(match.group(0)) if match else None
+        else:
+            year = None
+        if not year:
+            continue
+        if year < 1500 or year > dt.date.today().year + 1:
+            continue
+        years.append(year)
+    return sorted(set(years))
 
 
 def _compose_problem_definition(core_items: list[CorpusItem], plan: SearchPlan, protocol: ResearchProtocol) -> str:
@@ -540,20 +562,20 @@ def _compose_problem_definition(core_items: list[CorpusItem], plan: SearchPlan, 
     for item in core_items:
         if item.paper.venue and item.paper.venue.lower() in {"icml", "cvpr", "iclr", "acl", "neurips", "emnlp"}:
             domains.append(item.paper.venue)
-    domain_tag = ", ".join(sorted(set(domains))) or "结构生物学与 AI"
+    domain_tag = ", ".join(sorted(set(domains))) or "相关研究域"
     return (
-        f"研究问题可抽象为：给定目标结构条件（如二级/三级结构或约束集合），生成可复现且在评测集上有效的 RNA 序列。"
-        f" 输入域包括 {domain_tag}，目标域包括可达性、结构保真性和代码可复现性。"
+        f"研究问题可抽象为：围绕 {protocol.research_question} 提炼可复现的任务建模与评估范式，形成可对比的方法框架。"
+        f" 输入域包括 {domain_tag}（当可识别到），输出目标强调任务性能、证据强度与可迁移性。"
     )
 
 
 def _compose_why_it_matters(core_items: list[CorpusItem]) -> str:
     if not core_items:
-        return "RNA 结构设计是序列功能工程和治疗相关生物分子的关键底层问题；可复现与可验证能力直接影响工程可落地性。"
+        return "该研究方向的价值体现在可解释与可复现能力上；缺少统一证据链会显著影响结论可迁移性。"
     venues = sorted({item.paper.venue or "" for item in core_items if item.paper.venue})
     if venues:
         return f"与 {', '.join(venues[:3])} 等高水平发表/讨论语境相关，核心意义在于提升可设计性与对接真实实验或工程场景。"
-    return "该方向连接了结构建模、序列生成和实验验证，核心意义在于将可解释与可复现性要求同时纳入技术路线。"
+    return "该方向连接了建模、验证与应用场景，核心价值在于将可解释性、可复现性要求系统纳入技术路线与评估指标。"
 
 
 def _compose_research_questions(protocol_query: str, plan: SearchPlan) -> list[str]:
@@ -562,7 +584,7 @@ def _compose_research_questions(protocol_query: str, plan: SearchPlan) -> list[s
         normalized = [plan.recommended_query]
     research_questions = [f"RQ1: {normalized[0]}"]
     if plan.recommended_query and plan.recommended_query not in normalized[0]:
-        research_questions.append(f"RQ2: 如何比较 {plan.recommended_query} 在可复现性和结构一致性上的方法差异？")
+        research_questions.append(f"RQ2: 如何比较 {plan.recommended_query} 在可复现性与任务性能上的方法差异？")
     if not any("代码" in text or "code" in text.lower() for text in normalized):
         research_questions.append("RQ3: 哪些论文在公开代码/开源工具链层面可支持复现？")
     return research_questions
@@ -617,7 +639,7 @@ def _paper_summary(item: CorpusItem, row: dict[str, Any] | None) -> dict[str, An
     evidence_basis = row.get("evidence_basis") if row else ("fulltext+metadata" if paper.raw.get("fulltext_path") else "metadata_or_abstract_only")
     contribution = _contribution_sentence(paper.title, paper.abstract or "", method)
     method_sentence = (
-        "其方法是对 target structure 条件下进行序列候选生成和评估，并通过 folding 或 benchmark 约束作验证。"
+        "其方法通常围绕任务条件进行候选生成与验证，并通过实验/评测约束与代码复现性进行核验。"
     )
     result_signal = _extract_result_signal(paper.abstract or "")
     code_status = "public code was found" if (paper.github_url or paper.code_url) else "no public code link was found"
@@ -628,7 +650,7 @@ def _paper_summary(item: CorpusItem, row: dict[str, Any] | None) -> dict[str, An
         "year": paper.year,
         "method": method,
         "task_definition": task,
-        "research_question": f"{method} 在目标结构条件下的可实现性与验证。",
+        "research_question": f"{method} 在任务条件下的可实现性与验证。",
         "contributions": contribution,
         "results_signal": result_signal or "MATERIAL GAP",
         "reproducibility": f"{code_status}，并且{pdf_status}。",
@@ -651,20 +673,20 @@ def _extract_result_signal(text: str) -> str:
 def _contribution_sentence(title: str, abstract: str, method: str) -> str:
     text = f"{title} {abstract}".lower()
     if "rider" in text or "reinforcement" in text:
-        return "其核心贡献在于通过结构条件与策略优化融合，强化候选序列的结构一致性与任务目标约束。"
+        return "其核心贡献在于通过约束引导与策略优化融合，提升任务一致性与可验证性。"
     if "ribodiffusion" in text or "diffusion" in text:
-        return "其核心贡献是将逆折叠建模为条件生成任务，通过扩散/流匹配生成兼顾结构约束的候选序列。"
+        return "其核心贡献在于将任务建模为条件生成问题，通过可控采样流程生成约束下的候选输出。"
     if "gRNAde".lower() in text or "geometric" in text or "gnn" in text:
-        return "其核心贡献在于使用结构几何表示将序列生成/评估从二级结构转向三维或几何感知框架。"
+        return "其核心贡献在于引入结构化表示，提升候选构造与可复核评估在约束情景下的表现。"
     if "samfeo" in text or "ensemble" in text:
-        return "其核心贡献是将序列设计转化为设计性可控的集合优化问题，强调结构可行性而非单一恢复指标。"
+        return "其核心贡献在于将建模任务转化为集合优化问题，强化结果可控性并减少单一指标导向风险。"
     if "arnaque" in text or "evolutionary" in text or "greedy" in text:
-        return "其核心贡献在于通过进化/启发式搜索平衡多目标约束，提高可达结构下的序列可行率。"
+        return "其核心贡献在于通过进化/启发式搜索平衡多目标约束，提高候选解可行性。"
     if "language model" in text or "rwkv" in text:
-        return "其核心贡献在于将 RNA 设计问题转成条件化序列建模任务，增强可控采样与序列一致性。"
+        return "其核心贡献在于将任务建模为条件化生成问题，增强可控采样与结果一致性。"
     if "benchmark" in text or "designability" in text or "eterna" in text:
-        return "其核心贡献在于量化不同结构/方法的可设计性差异，厘清评测规范对“方法性能”结论的影响。"
-    return f"其贡献定位于 {method} 路线，提供可复现性相关的结构生成或验证框架。"
+        return "其核心贡献在于量化不同方法在可复现性与任务负载下的性能差异，厘清评测规范对结论的影响。"
+    return f"其贡献定位于 {method} 路线，强调可复现的任务建模、验证流程与结果可追溯性。"
 
 
 def _method_comparison_entry(theme: dict[str, Any]) -> dict[str, str]:
@@ -859,13 +881,33 @@ def infer_task(title: str, abstract: str) -> str:
     text = f"{title} {abstract}".lower()
     if "inverse" in text or "design" in text:
         if "3d" in text or "tertiary" in text or "backbone" in text:
-            return "3D RNA inverse design"
-        return "RNA sequence design / inverse folding"
+            return "约束条件下的任务建模与生成任务"
+        return "任务建模与结果优化任务"
     if "prediction" in text:
-        return "RNA structure prediction"
+        return "预测与建模任务"
     if "benchmark" in text or "eterna" in text:
         return "Benchmarking"
-    return "Adjacent computational RNA task"
+    return "相关计算方法任务"
+
+
+def _infer_applicable_domains(core_items: list[CorpusItem]) -> list[str]:
+    if not core_items:
+        return ["AI Methods", "General Science"]
+    venues = [item.paper.venue or "" for item in core_items]
+    tokens = []
+    for venue in venues:
+        lowered = (venue or "").lower()
+        if any(tag in lowered for tag in ["cvpr", "icml", "iclr", "neurips", "acl", "emnlp", "aaai", "ijcai"]):
+            tokens.append("AI / ML")
+            continue
+        if any(tag in lowered for tag in ["bio", "med", "jbc", "nature", "cell"]):
+            tokens.append("Life Sciences")
+            continue
+        tokens.append("General Research")
+    merged = sorted(set(tokens))
+    if not merged:
+        return ["AI / ML"]
+    return merged[:4]
 
 
 def extract_metric_hints(text: str) -> list[str]:

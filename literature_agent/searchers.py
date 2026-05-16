@@ -108,7 +108,7 @@ def search_arxiv(query: str, limit: int, since_year: int | None, source_config: 
         title = compact_text(_xml_text(entry, "atom:title", ns))
         summary = compact_text(_xml_text(entry, "atom:summary", ns))
         published = _xml_text(entry, "atom:published", ns)
-        year = int(published[:4]) if published[:4].isdigit() else None
+        year = _coerce_year(published[:4], since_year=since_year)
         arxiv_url = _xml_text(entry, "atom:id", ns)
         arxiv_id = arxiv_url.rsplit("/", 1)[-1] if arxiv_url else None
         authors = [compact_text(a.findtext("atom:name", default="", namespaces=ns)) for a in entry.findall("atom:author", ns)]
@@ -148,7 +148,7 @@ def search_semantic_scholar(query: str, limit: int, since_year: int | None, sour
             Paper(
                 title=compact_text(item.get("title")),
                 authors=[a.get("name", "") for a in item.get("authors", []) if a.get("name")],
-                year=item.get("year"),
+                year=_coerce_year(item.get("year"), since_year=since_year),
                 venue=item.get("venue"),
                 abstract=compact_text(item.get("abstract")),
                 doi=external.get("DOI"),
@@ -187,7 +187,7 @@ def search_openalex(query: str, limit: int, since_year: int | None, source_confi
             Paper(
                 title=compact_text(item.get("display_name")),
                 authors=authors,
-                year=item.get("publication_year"),
+                year=_coerce_year(item.get("publication_year"), since_year=since_year),
                 venue=((item.get("primary_location") or {}).get("source") or {}).get("display_name"),
                 abstract=_openalex_abstract(item.get("abstract_inverted_index")),
                 doi=doi,
@@ -247,7 +247,13 @@ def search_openreview(query: str, limit: int, since_year: int | None, source_con
         if isinstance(authors, str):
             authors = [authors]
         cdate = note.get("cdate")
-        year = dt.datetime.fromtimestamp(cdate / 1000).year if cdate else None
+        year = None
+        if cdate:
+            try:
+                year = dt.datetime.fromtimestamp(float(cdate) / 1000).year
+            except (TypeError, ValueError, OSError, OverflowError):
+                year = None
+        year = _coerce_year(year, since_year=since_year)
         if since_year and year and year < since_year:
             continue
         paper_id = note.get("id")
@@ -346,7 +352,7 @@ def search_europe_pmc(query: str, limit: int, since_year: int | None, source_con
             Paper(
                 title=compact_text(item.get("title")),
                 authors=authors,
-                year=_safe_int(str(item.get("pubYear") or "")),
+                year=_coerce_year(str(item.get("pubYear") or ""), since_year=since_year),
                 venue=item.get("journalTitle") or item.get("bookOrReportDetails"),
                 abstract=compact_text(item.get("abstractText")),
                 doi=item.get("doi"),
@@ -377,7 +383,7 @@ def search_dblp(query: str, limit: int, since_year: int | None, source_config: S
     for hit in hits:
         info = hit.get("info") or {}
         authors = _dblp_authors(info.get("authors"))
-        year = _safe_int(info.get("year"))
+        year = _coerce_year(info.get("year"), since_year=since_year)
         if since_year and year and year < since_year:
             continue
         papers.append(
@@ -408,7 +414,7 @@ def search_acl_anthology(query: str, limit: int, since_year: int | None, source_
             continue
         seen.add(title)
         year_match = re.search(r"/(\d{4})\.", path)
-        year = _safe_int(year_match.group(1)) if year_match else None
+        year = _coerce_year(year_match.group(1), since_year=since_year) if year_match else None
         if since_year and year and year < since_year:
             continue
         papers.append(
@@ -456,7 +462,7 @@ def _search_papers_cool_list(source_mode: str, query: str, limit: int, since_yea
         text = safe_fetch(lambda: request_text(url, timeout=15), "")
         if not text:
             break
-        parsed = _parse_papers_cool_html(text, query, source_mode=source_mode)
+        parsed = _parse_papers_cool_html(text, query, source_mode=source_mode, since_year=since_year)
         if not parsed:
             break
         added = 0
@@ -486,7 +492,12 @@ def _search_papers_cool_list(source_mode: str, query: str, limit: int, since_yea
     return papers
 
 
-def _parse_papers_cool_html(html_content: str, query: str, source_mode: str) -> list[Paper]:
+def _parse_papers_cool_html(
+    html_content: str,
+    query: str,
+    source_mode: str,
+    since_year: int | None = None,
+) -> list[Paper]:
     panels = re.finditer(
         r'<div id="(?P<paper_id>[^"]+)" class="panel paper"[^>]*>(?P<body>.*?)</div>',
         html_content,
@@ -496,14 +507,21 @@ def _parse_papers_cool_html(html_content: str, query: str, source_mode: str) -> 
     for match in panels:
         raw_id = match.group("paper_id")
         body = match.group("body")
-        paper = _parse_papers_cool_panel(raw_id, body, query, source_mode)
+        paper = _parse_papers_cool_panel(raw_id, body, query, source_mode, since_year=since_year)
         if paper:
             papers.append(paper)
     return papers
 
 
 
-def _parse_papers_cool_panel(raw_id: str, body: str, query: str, source_mode: str) -> Paper | None:
+def _parse_papers_cool_panel(
+    raw_id: str,
+    body: str,
+    query: str,
+    source_mode: str,
+    *,
+    since_year: int | None = None,
+) -> Paper | None:
     title = _extract_papers_cool_text(body, rf'title-{re.escape(raw_id)}"[^>]*>(?P<value>.*?)</a>')
     if not title:
         return None
@@ -533,14 +551,14 @@ def _parse_papers_cool_panel(raw_id: str, body: str, query: str, source_mode: st
     year = None
     if date_text:
         date_match = re.search(r"(\d{4})", date_text)
-        year = _safe_int(date_match.group(1)) if date_match else None
+        year = _coerce_year(date_match.group(1) if date_match else None, since_year=since_year)
     if year is None and source_mode == "arxiv":
         arxiv_id_match = re.search(r"^(\d{4})\.\d+", raw_id)
         if arxiv_id_match:
-            year = _safe_int(arxiv_id_match.group(1))
+            year = _coerce_year(arxiv_id_match.group(1), since_year=since_year)
     if year is None and source_mode != "arxiv":
         fallback_match = re.search(r"^(\d{4})", raw_id) or re.search(r"\.(\d{4})", raw_id)
-        year = _safe_int(fallback_match.group(1)) if fallback_match else None
+        year = _coerce_year(fallback_match.group(1), since_year=since_year) if fallback_match else None
 
     arxiv_id: str | None = None
     if source_mode == "arxiv":
@@ -621,7 +639,7 @@ def search_core(query: str, limit: int, since_year: int | None, source_config: S
     results = data.get("results", []) if isinstance(data, dict) else []
     papers: list[Paper] = []
     for item in results:
-        year = _safe_int(item.get("yearPublished") or item.get("year"))
+        year = _coerce_year(item.get("yearPublished") or item.get("year"), since_year=since_year)
         if since_year and year and year < since_year:
             continue
         authors = [a.get("name") for a in item.get("authors", []) if isinstance(a, dict) and a.get("name")]
@@ -657,7 +675,7 @@ def search_lens(query: str, limit: int, since_year: int | None, source_config: S
     results = data.get("data", []) if isinstance(data, dict) else []
     papers: list[Paper] = []
     for item in results:
-        year = _safe_int(item.get("year_published"))
+        year = _coerce_year(item.get("year_published"), since_year=since_year)
         if since_year and year and year < since_year:
             continue
         authors = [a.get("display_name") for a in item.get("authors", []) if isinstance(a, dict) and a.get("display_name")]
@@ -689,7 +707,7 @@ def search_ieee(query: str, limit: int, since_year: int | None, source_config: S
     data = safe_fetch(lambda: request_json(url, timeout=12), {})
     papers = []
     for item in data.get("articles", []) if isinstance(data, dict) else []:
-        year = _safe_int(item.get("publication_year"))
+        year = _coerce_year(item.get("publication_year"), since_year=since_year)
         if since_year and year and year < since_year:
             continue
         papers.append(
@@ -719,7 +737,7 @@ def search_springer(query: str, limit: int, since_year: int | None, source_confi
     data = safe_fetch(lambda: request_json(url, timeout=12), {})
     papers = []
     for item in data.get("records", []) if isinstance(data, dict) else []:
-        year = _safe_int(str(item.get("publicationDate", ""))[:4])
+        year = _coerce_year(str(item.get("publicationDate", ""))[:4], since_year=since_year)
         if since_year and year and year < since_year:
             continue
         links = item.get("url") or []
@@ -757,7 +775,7 @@ def search_elsevier(query: str, limit: int, since_year: int | None, source_confi
             Paper(
                 title=compact_text(item.get("dc:title")),
                 authors=[item.get("dc:creator")] if item.get("dc:creator") else [],
-                year=_safe_int(str(item.get("prism:coverDate", ""))[:4]),
+                year=_coerce_year(str(item.get("prism:coverDate", ""))[:4], since_year=since_year),
                 venue=item.get("prism:publicationName"),
                 doi=item.get("prism:doi"),
                 url=item.get("prism:url") or item.get("link", [{}])[0].get("@href") if isinstance(item.get("link"), list) else None,
@@ -783,7 +801,7 @@ def search_dimensions(query: str, limit: int, since_year: int | None, source_con
             Paper(
                 title=compact_text(item.get("title")),
                 authors=[a.get("name") for a in item.get("authors", []) if isinstance(a, dict) and a.get("name")],
-                year=_safe_int(item.get("year")),
+                year=_coerce_year(item.get("year"), since_year=since_year),
                 venue=(item.get("journal") or {}).get("title") if isinstance(item.get("journal"), dict) else None,
                 abstract=compact_text(item.get("abstract")),
                 doi=item.get("doi"),
@@ -829,7 +847,7 @@ def search_deepxiv(query: str, limit: int, since_year: int | None, source_config
                 ),
                 {},
             )
-        papers.extend(_deepxiv_papers_from_response(data, query, deepxiv_source))
+        papers.extend(_deepxiv_papers_from_response(data, query, deepxiv_source, since_year=since_year))
     return [p for p in papers if p.title][: max(1, limit)]
 
 
@@ -870,7 +888,13 @@ def _deepxiv_rest_search(
     return request_json(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=18)
 
 
-def _deepxiv_papers_from_response(data: dict, query: str, deepxiv_source: str) -> list[Paper]:
+def _deepxiv_papers_from_response(
+    data: dict,
+    query: str,
+    deepxiv_source: str,
+    *,
+    since_year: int | None = None,
+) -> list[Paper]:
     if not isinstance(data, dict):
         return []
     results = data.get("result") or data.get("results") or []
@@ -889,7 +913,7 @@ def _deepxiv_papers_from_response(data: dict, query: str, deepxiv_source: str) -
         if not url and deepxiv_source == "arxiv" and paper_id:
             url = f"https://arxiv.org/abs/{paper_id}"
         authors = _deepxiv_authors(item.get("authors"))
-        year = _safe_int(str(item.get("date") or item.get("publish_at") or "")[:4])
+        year = _coerce_year(str(item.get("date") or item.get("publish_at") or "")[:4], since_year=since_year)
         pdf_url = item.get("pdf_url") or item.get("src_url")
         if not pdf_url and deepxiv_source == "arxiv" and paper_id:
             pdf_url = f"https://arxiv.org/pdf/{paper_id}"
@@ -974,7 +998,9 @@ def _search_rxiv(server: str, query: str, limit: int, since_year: int | None) ->
         text = " ".join([item.get("title") or "", item.get("abstract") or ""]).lower()
         if terms and not any(term in text for term in terms):
             continue
-        year = _safe_int(str(item.get("date", ""))[:4])
+        year = _coerce_year(str(item.get("date", ""))[:4], since_year=since_year)
+        if since_year and year and year < since_year:
+            continue
         doi = item.get("doi")
         papers.append(
             Paper(
@@ -985,7 +1011,7 @@ def _search_rxiv(server: str, query: str, limit: int, since_year: int | None) ->
                 abstract=compact_text(item.get("abstract")),
                 doi=doi,
                 url=f"https://doi.org/{doi}" if doi else None,
-                pdf_url=f"https://www.{server}.org/content/{doi}v{item.get('version', '1')}.full.pdf" if doi else None,
+                pdf_url=(f"https://www.{server}.org/content/{doi}v{item.get('version', '1')}.full.pdf" if doi else None),
                 source=server,
                 sources=[server],
                 raw={"query": query, "server": server},
@@ -1032,6 +1058,28 @@ def _safe_int(value) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _coerce_year(value, since_year: int | None = None) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        parsed = value
+    else:
+        match = re.search(r"(19|20)\d{2}", str(value))
+        if not match:
+            return None
+        parsed = _safe_int(match.group(0))
+    if parsed is None:
+        return None
+    current_year = dt.date.today().year
+    if parsed < 1500 or parsed > current_year + 1:
+        return None
+    if since_year is not None and parsed < max(1500, since_year - 2):
+        return None
+    return parsed
 
 
 def _init_diagnostics(source_names: list[str], source_configs: dict[str, SourceConfig], queries: list[str]) -> dict:

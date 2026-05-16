@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import argparse
+from unittest.mock import patch
 import contextlib
 import io
 import os
@@ -33,13 +34,13 @@ from literature_agent.openai_client import OpenAIClient
 from literature_agent.pdf_report import write_pdf_report
 from literature_agent.planner import make_plan
 from literature_agent.protocol import build_protocol
-from literature_agent.processing import apply_github_filter, deduplicate, resolve_code_links
+from literature_agent.processing import apply_github_filter, deduplicate, resolve_code_links, _coerce_year_for_ranking
 from literature_agent.query import heuristic_understanding
 from literature_agent.report import build_canonical_report, markdown_report_to_html, render_html_reports, render_reports
 from literature_agent.report_policy import select_report_items
-from literature_agent.searchers import search_dblp, search_deepxiv, search_europe_pmc, search_pubmed
-from literature_agent.sources import SourceConfig, resolve_enabled_sources
-from literature_agent.synthesis import build_literature_matrix, build_synthesis
+from literature_agent.searchers import search_dblp, search_deepxiv, search_europe_pmc, search_pubmed, _coerce_year
+from literature_agent.sources import SourceConfig, resolve_enabled_sources, run_sources_command
+from literature_agent.synthesis import build_literature_matrix, build_synthesis, infer_task, _contribution_sentence
 from literature_agent.ui import console as rich_console
 from literature_agent.ui import print_intent_summary, print_sources_table, source_status_summary
 from literature_agent.utils import create_task_dir, read_api_config
@@ -105,6 +106,30 @@ class ProcessingTests(unittest.TestCase):
         self.assertTrue(result.needs_confirmation)
         self.assertIn("RNA foundation model", result.search_terms)
 
+    def test_infer_task_non_rna_no_rna_terminology(self):
+        task = infer_task("Deep-learning-driven design for organoid scaffolds", "A design-oriented framework for organoid morphology.")
+        self.assertIn("任务", task)
+        self.assertNotIn("RNA", task)
+        self.assertNotIn("可复现建模与生成任务", task)
+
+    def test_contribution_sentence_no_rna_or_sequence_terminology_for_non_rna(self):
+        summary = _contribution_sentence(
+            "Graph neural model for organoid morphology generation",
+            "A method that learns graph priors from morphology annotations.",
+            "Geometric Deep Learning",
+        )
+        self.assertNotIn("序列", summary)
+        self.assertNotIn("RNA", summary)
+        self.assertIn("贡献", summary)
+
+    def test_protocol_fallback_inclusion_criteria_is_domain_neutral(self):
+        understanding = heuristic_understanding("类器官 研究 方法")
+        plan = make_plan(understanding, max_papers=20, since_year=2021, client=None)
+        protocol = build_protocol(understanding, plan, "any", client=None)
+        fallback_text = " ".join(protocol.inclusion_criteria)
+        self.assertNotIn("RNA", fallback_text)
+        self.assertIn("topic-specific terminology", fallback_text)
+
     def test_parse_chinese_interactive_intent(self):
         result = parse_research_intent("调研CVPR/ICML近三年关于少样本学习在生物序列中的应用，要求有代码链接,方法不限", current_year=2026)
 
@@ -159,6 +184,30 @@ class ProcessingTests(unittest.TestCase):
             self.assertEqual(profile["api_key"], "sk-example")
             self.assertEqual(profile["base_url"], "https://api.deepseek.com")
             self.assertEqual(profile["model"], "deepseek-chat")
+
+    def test_coerce_year_filters_invalid_and_out_of_range_values(self):
+        self.assertIsNone(_coerce_year("3329", since_year=2021))
+        self.assertIsNone(_coerce_year("abc", since_year=2021))
+        self.assertIsNone(_coerce_year(1499, since_year=2021))
+        self.assertEqual(_coerce_year(2026, since_year=2021), 2026)
+
+    def test_coerce_year_for_ranking_clamps_out_of_range(self):
+        self.assertIsNone(_coerce_year_for_ranking(3329))
+        self.assertIsNone(_coerce_year_for_ranking(1499))
+        self.assertEqual(_coerce_year_for_ranking(2026), 2026)
+
+    def test_sources_test_uses_neutral_default_query(self):
+        with TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"PAPERPILOT_HOME": tmp}):
+                with patch("literature_agent.searchers.search_one_source") as mock_search:
+                    mock_search.return_value = []
+
+                    code = run_sources_command(["test", "arxiv"])
+
+                    self.assertEqual(code, 0)
+                    self.assertEqual(mock_search.call_args.args[0], "arxiv")
+                    self.assertEqual(mock_search.call_args.args[1], "test")
+                    self.assertEqual(mock_search.call_args.kwargs.get("limit"), 1)
 
     def test_write_pdf_report(self):
         with TemporaryDirectory() as tmp:
@@ -740,6 +789,22 @@ Paragraph.
         empty = select_report_items([], [], "any", max_papers=50, min_report_papers=0)
         self.assertIsNotNone(empty.shortfall)
         self.assertEqual(empty.shortfall["reason"], "No core or adjacent papers were available after screening.")
+
+    def test_report_selection_uses_excluded_fallback_when_no_core_adjacent(self):
+        excluded = [
+            CorpusItem(
+                citation_key=f"excluded{i}",
+                paper=Paper(title=f"Excluded background paper {i}", has_code=False),
+                inclusion=InclusionDecision(label="exclude", score=0.05, reason="off-topic"),
+            )
+            for i in range(4)
+        ]
+
+        selection = select_report_items([], [], "any", excluded_items=excluded, max_papers=5, min_report_papers=0)
+
+        self.assertIsNone(selection.shortfall)
+        self.assertEqual(len(selection.items), 4)
+        self.assertEqual(selection.stats["excluded_fill_count"], 4)
 
     def test_chat_completion_uses_reasoning_content_when_content_empty(self):
         client = OpenAIClient(api_key="sk-test", model="deepseek-test", base_url="https://api.deepseek.com")

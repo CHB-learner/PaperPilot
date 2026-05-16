@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import datetime as dt
 from collections import Counter
 from difflib import SequenceMatcher
 
@@ -139,12 +140,20 @@ def _merge_paper(current: Paper, paper: Paper) -> None:
 
 
 def classify_paper(paper: Paper, plan: SearchPlan, protocol: ResearchProtocol) -> InclusionDecision:
+    paper_year = _coerce_year_for_screening(paper.year, plan.since_year)
+    if paper_year != paper.year:
+        paper.year = paper_year
     text = _paper_text(paper)
     phrase_terms = set(_query_terms(plan))
     primary_tokens = _topic_tokens([plan.recommended_query])
     topic_tokens = _topic_tokens([plan.recommended_query, *plan.search_queries, *plan.subtopics])
-    static_core_terms = CORE_TERMS if _is_rna_task(plan) else set()
-    static_adjacent_terms = ADJACENT_TERMS if _is_rna_task(plan) else set()
+    non_ascii_plan_tokens = _topic_tokens_non_ascii([plan.recommended_query, *plan.search_queries, *plan.subtopics, *phrase_terms])
+    if _is_rna_task(plan):
+        static_core_terms = CORE_TERMS
+        static_adjacent_terms = ADJACENT_TERMS
+    else:
+        static_core_terms = set(_query_terms(plan)) | {term for term in topic_tokens if len(term) >= 3}
+        static_adjacent_terms = set(_topic_tokens(plan.search_queries[:4]))
     phrase_hits = sorted(term for term in static_core_terms | phrase_terms if term and term in text)
     primary_hits = sorted(token for token in primary_tokens if token in text)
     token_hits = sorted(token for token in topic_tokens if token in text)
@@ -153,28 +162,42 @@ def classify_paper(paper: Paper, plan: SearchPlan, protocol: ResearchProtocol) -
     negative_hits = sorted(term for term in protocol.negative_keywords if term.lower() in text)
 
     score = 0.0
-    score += min(0.5, 0.2 * len(phrase_hits))
-    score += min(0.3, 0.15 * len(primary_hits))
-    score += min(0.25, 0.05 * len(token_hits))
+    score += min(0.55, 0.25 * len(phrase_hits))
+    score += min(0.3, 0.12 * len(primary_hits))
+    score += min(0.25, 0.08 * len(token_hits))
     score += min(0.2, 0.06 * len(adjacent_hits))
     if paper.has_code:
         score += 0.05
     if paper.abstract:
         score += 0.05
-    score -= min(0.7, 0.18 * len(negative_hits))
+    if non_ascii_plan_tokens and not _contains_ascii(non_ascii_plan_tokens):
+        score += 0.06
+    score -= min(0.5 if _is_rna_task(plan) else 0.35, 0.18 * len(negative_hits))
     score = max(0.0, min(1.0, score))
 
+    if plan.since_year and paper_year and paper_year < plan.since_year:
+        return InclusionDecision(
+            label="exclude",
+            score=0.0,
+            reason="Publication year is below requested since-year threshold.",
+            matched_terms=core_hits + adjacent_hits,
+            negative_hits=negative_hits,
+        )
+
     title = normalize_title(paper.title)
-    if any(marker in title for marker in ["autodock vina", "rna seqc", "rtm align", "prolif", "sharing biological data"]):
+    off_topic_markers = ["autodock vina", "prolif"]
+    if _is_rna_task(plan):
+        off_topic_markers.extend(["rna seqc", "rtm align", "sharing biological data"])
+    if any(marker in title for marker in off_topic_markers):
         label = "exclude"
         reason = "Title matches a known adjacent or off-topic tool category for this task."
     elif negative_hits and not phrase_hits and len(primary_hits) < 2:
         label = "exclude"
         reason = "Negative topic signals dominate and task-specific evidence is weak."
-    elif score >= 0.5 and (phrase_hits or primary_hits or len(token_hits) >= 2):
+    elif score >= (0.5 if _is_rna_task(plan) else 0.3) and (phrase_hits or primary_hits or len(token_hits) >= 2):
         label = "core"
         reason = "The paper directly matches the requested topic terminology."
-    elif score >= 0.24 and (primary_hits or token_hits or adjacent_hits):
+    elif score >= (0.2 if _is_rna_task(plan) else 0.12) and (primary_hits or token_hits or adjacent_hits):
         label = "adjacent"
         reason = "The paper is related but not central enough for the core synthesis."
     else:
@@ -287,17 +310,25 @@ def split_corpus(items: list[CorpusItem]) -> tuple[list[CorpusItem], list[Corpus
 
 
 def _paper_text(paper: Paper) -> str:
-    return " ".join([paper.title, paper.abstract or "", paper.venue or ""]).lower()
+    return " ".join(
+        [
+            paper.title or "",
+            paper.abstract or "",
+            str(paper.venue or ""),
+        ]
+    ).lower()
 
 
 def _query_terms(plan: SearchPlan) -> list[str]:
     terms = set()
     for value in [plan.recommended_query, *plan.search_queries, *plan.subtopics]:
         lowered = value.lower()
-        for phrase in re.findall(r"[a-z][a-z0-9 -]{3,}", lowered):
+        for phrase in re.findall(r"[a-z][a-z0-9 -]{2,}", lowered):
             phrase = re.sub(r"\s+", " ", phrase).strip()
             if len(phrase.split()) >= 2:
                 terms.add(phrase)
+        for phrase in re.findall(r"[\u4e00-\u9fff]{2,}", lowered):
+            terms.add(phrase.strip())
     return sorted(terms)
 
 
@@ -359,12 +390,54 @@ def _topic_tokens(values: list[str]) -> list[str]:
     }
     tokens: list[str] = []
     for value in values:
+        tokens.extend(_topic_tokens_non_ascii(value))
         for token in re.findall(r"[a-zA-Z][a-zA-Z0-9-]{2,}", value.lower()):
             token = token.strip("-")
             if len(token) < 3 or token in stop:
                 continue
             tokens.append(token)
     return list(dict.fromkeys(tokens))[:24]
+
+
+def _coerce_year_for_screening(year: int | str | None, since_year: int | None) -> int | None:
+    if year is None:
+        return None
+    if isinstance(year, bool):
+        return None
+    if isinstance(year, int):
+        if year < 1500 or year > dt.date.today().year + 1:
+            return None
+        if since_year is not None and year < max(1500, since_year - 2):
+            return None
+        return year
+    value = str(year).strip()
+    if not value:
+        return None
+    match = re.search(r"(19|20)\d{2}", value)
+    if not match:
+        return None
+    parsed = int(match.group(0))
+    if parsed < 1500 or parsed > dt.date.today().year + 1:
+        return None
+    if since_year is not None and parsed < max(1500, since_year - 2):
+        return None
+    return parsed
+
+
+def _topic_tokens_non_ascii(values: list[str]) -> list[str]:
+    tokens: list[str] = []
+    for value in values:
+        lowered = value.lower()
+        for chunk in re.findall(r"[\u4e00-\u9fff]{2,}", lowered):
+            # Keep concise CJK chunks and remove very generic fragments.
+            if len(chunk) < 2 or chunk in {"相关", "研究", "方法"}:
+                continue
+            tokens.append(chunk)
+    return list(dict.fromkeys(tokens))
+
+
+def _contains_ascii(tokens: list[str]) -> bool:
+    return any(any("a" <= char <= "z" for char in token.lower()) for token in tokens)
 
 
 def _important_tokens(title: str) -> list[str]:

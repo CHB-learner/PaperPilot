@@ -22,7 +22,7 @@ class DoctorReport:
     checks: list[DoctorCheck]
 
 
-def run_doctor(client: OpenAIClient, app_config: AppConfig, *, source_query: str = "RNA") -> DoctorReport:
+def run_doctor(client: OpenAIClient, app_config: AppConfig, *, source_query: str = "test") -> DoctorReport:
     checks = [_check_llm(client)]
     checks.extend(_check_configured_sources(app_config, source_query=source_query))
     if any(check.status == "fail" for check in checks):
@@ -70,4 +70,3 @@ def _check_configured_sources(app_config: AppConfig, *, source_query: str) -> li
         else:
             checks.append(DoctorCheck("Sources", spec.display_name, "warn", "configured but returned 0 results for test query"))
     return checks
-

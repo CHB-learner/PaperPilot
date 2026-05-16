@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import datetime as dt
 import re
 import urllib.parse
 from collections import Counter
@@ -140,20 +141,17 @@ def apply_github_filter(papers: list[Paper], mode: str) -> list[Paper]:
 
 def rank_papers(papers: list[Paper], keyword: str, since_year: int | None) -> list[Paper]:
     query_terms = _terms(keyword)
-    current_year = 2026
+    current_year = dt.date.today().year
     for paper in papers:
-        text = " ".join(
-            [
-                _as_text(paper.title),
-                _as_text(paper.abstract),
-                _as_text(paper.venue),
-            ]
-        ).lower()
+        paper_year = _coerce_year_for_ranking(paper.year)
+        if paper_year != paper.year:
+            paper.year = paper_year
+        text = " ".join([_as_text(paper.title), _as_text(paper.abstract), _as_text(paper.venue)]).lower()
         term_hits = sum(1 for term in query_terms if term in text)
         relevance = term_hits / max(1, len(query_terms))
         recency = 0.0
-        if paper.year:
-            recency = max(0.0, 1.0 - min(10, current_year - paper.year) / 10)
+        if paper_year:
+            recency = max(0.0, 1.0 - min(10, current_year - paper_year) / 10)
         citations = math.log1p(paper.citation_count or 0) / 10
         venue_bonus = 0.15 if paper.venue and any(v in paper.venue.lower() for v in ["neurips", "iclr", "icml", "acl", "cvpr", "emnlp", "openreview", "arxiv"]) else 0
         pdf_bonus = 0.1 if paper.pdf_url else 0
@@ -212,6 +210,31 @@ def _as_text(value) -> str:
                 return _as_text(value.get(key))
         return " ".join(_as_text(item) for item in value.values())
     return str(value)
+
+
+def _coerce_year_for_ranking(year) -> int | None:
+    if isinstance(year, bool):
+        return None
+    if isinstance(year, int):
+        if year < 1500:
+            return None
+        current_year = dt.date.today().year
+        if year > current_year + 1:
+            return None
+        return year
+    if year is None:
+        return None
+    text = str(year).strip()
+    if not text:
+        return None
+    match = re.search(r"(19|20)\d{2}", text)
+    if not match:
+        return None
+    parsed = int(match.group(0))
+    current_year = dt.date.today().year
+    if parsed > current_year + 1 or parsed < 1500:
+        return None
+    return parsed
 
 
 def _github_match_score(title_tokens: set[str], candidate_text: str) -> int:

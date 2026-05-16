@@ -471,9 +471,12 @@ def _abstract(canonical: dict[str, Any], client: OpenAIClient | None) -> dict[st
 def _limitations(protocol: ResearchProtocol, quality_gate: QualityGate, pdf_summary: dict[str, Any]) -> list[str]:
     limitations = [
         "The review uses retrieved metadata, abstracts, and downloaded open-access PDFs; unavailable full texts are not treated as verified evidence.",
-        f"GitHub filter mode was `{protocol.github_filter}` and may bias the final view toward papers with public implementations.",
         f"PDF downloads: {pdf_summary['downloaded']} downloaded, {pdf_summary['skipped']} skipped, {pdf_summary['failed']} failed.",
     ]
+    if protocol.github_filter == "required":
+        limitations.append("GitHub filter mode was `required` and may bias the final view toward papers with public implementations.")
+    elif protocol.github_filter == "none":
+        limitations.append("GitHub filter mode was `none` and may bias the final view toward papers without public code links.")
     limitations.extend(quality_gate.issues)
     return list(dict.fromkeys(limitations))
 
