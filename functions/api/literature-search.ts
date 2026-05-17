@@ -144,7 +144,7 @@ async function buildSearchPlan(query: string, diagnostic: LlmDiagnostic, env: En
       diagnostic.httpStatus = response.status;
       return null;
     }
-    const data = await response.json();
+    const data: any = await response.json();
     const content = data?.choices?.[0]?.message?.content;
     const parsed = parsePlan(typeof content === "string" ? content : "");
     if (!parsed) {
@@ -252,7 +252,7 @@ async function buildReportSummary(
       diagnostic.httpStatus = response.status;
       return null;
     }
-    const data = await response.json();
+    const data: any = await response.json();
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== "string" || !content.trim()) {
       diagnostic.status = "invalid_response";
@@ -404,7 +404,7 @@ async function searchSemanticScholar(query: string, limit: number): Promise<Pape
       headers: { Accept: "application/json" },
     });
     if (!response.ok) return [];
-    const data = await response.json();
+    const data: any = await response.json();
     return Array.isArray(data?.data)
       ? data.data.map((item: any) => ({
           title: text(item.title),
@@ -430,7 +430,7 @@ async function searchOpenAlex(query: string, limit: number): Promise<Paper[]> {
       headers: { Accept: "application/json" },
     });
     if (!response.ok) return [];
-    const data = await response.json();
+    const data: any = await response.json();
     return Array.isArray(data?.results)
       ? data.results.map((item: any) => ({
           title: text(item.display_name),
