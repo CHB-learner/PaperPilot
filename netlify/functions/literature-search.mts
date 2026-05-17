@@ -39,6 +39,7 @@ type ReportPayload = {
 
 const DEFAULT_MODEL = "deepseek-v4-flash";
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
+const API_KEY_PLACEHOLDERS = new Set(["", "123456", "changeme", "your-deepseek-key"]);
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") {
@@ -110,7 +111,7 @@ export const config: Config = {
 };
 
 async function buildSearchPlan(query: string, diagnostic: LlmDiagnostic): Promise<SearchPlan | null> {
-  const apiKey = env("LLM_API_KEY");
+  const apiKey = normalizeApiKey(env("LLM_API_KEY"));
   const baseUrl = (env("LLM_BASE_URL") || DEFAULT_BASE_URL).replace(/\/$/, "");
   const model = env("LLM_MODEL") || DEFAULT_MODEL;
   if (!apiKey) {
@@ -205,7 +206,7 @@ async function buildReportSummary(
   papers: Paper[],
   diagnostic: LlmDiagnostic,
 ): Promise<string | null> {
-  const apiKey = env("LLM_API_KEY");
+  const apiKey = normalizeApiKey(env("LLM_API_KEY"));
   const baseUrl = (env("LLM_BASE_URL") || DEFAULT_BASE_URL).replace(/\/$/, "");
   const model = env("LLM_MODEL") || DEFAULT_MODEL;
   if (!apiKey) {
@@ -509,6 +510,11 @@ function numberOrNull(value: unknown): number | null {
 
 function env(name: string): string | undefined {
   return Netlify.env.get(name);
+}
+
+function normalizeApiKey(value: string | undefined): string | undefined {
+  const clean = (value || "").trim();
+  return API_KEY_PLACEHOLDERS.has(clean.toLowerCase()) ? undefined : clean;
 }
 
 function slugify(value: string, maxLength: number): string {

@@ -9,6 +9,7 @@
     "run_worker_first": true
   },
   "vars": {
+    "LLM_API_KEY": "123456",
     "LLM_BASE_URL": "https://api.deepseek.com",
     "LLM_MODEL": "deepseek-v4-flash"
   },
