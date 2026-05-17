@@ -7,6 +7,7 @@ type Env = {
   LLM_API_KEY?: string;
   LLM_BASE_URL?: string;
   LLM_MODEL?: string;
+  SEMANTIC_SCHOLAR_API_KEY?: string;
 };
 
 type SearchPlan = {
@@ -43,7 +44,7 @@ type ReportPayload = {
 type SourceDiagnostic = {
   source: string;
   query: string;
-  status: "ok" | "http_error" | "invalid_response" | "request_error";
+  status: "ok" | "skipped" | "http_error" | "invalid_response" | "request_error";
   returned: number;
   httpStatus?: number;
   message?: string;
@@ -85,18 +86,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
   const searchQueries = normalizeQueries(plan.search_queries, query);
-  const perSourceLimit = Math.min(25, Math.max(8, Math.ceil(maxPapers / Math.max(searchQueries.length, 1))));
-  const batches = await Promise.all(
-    searchQueries.flatMap((searchQuery) => [
-      searchSemanticScholar(searchQuery, perSourceLimit),
-      searchOpenAlex(searchQuery, perSourceLimit),
-    ]),
-  );
+  const perSourceLimit = Math.min(10, Math.max(5, Math.ceil(maxPapers / Math.max(searchQueries.length, 1))));
+  const batches = await searchScholarlySources(searchQueries, perSourceLimit, env);
   let sourceDiagnostics = batches.map((batch) => batch.diagnostic);
   let papers = rankPapers(dedupePapers(batches.flatMap((batch) => batch.papers))).slice(0, maxPapers);
   if (!papers.length) {
     const fallbackQueries = fallbackSearchQueries(query, plan, searchQueries);
-    const fallbackBatches = await Promise.all(fallbackQueries.map((searchQuery) => searchOpenAlex(searchQuery, maxPapers)));
+    const fallbackBatches = await searchFallbackSources(fallbackQueries, maxPapers);
     sourceDiagnostics = sourceDiagnostics.concat(fallbackBatches.map((batch) => batch.diagnostic));
     papers = rankPapers(dedupePapers(fallbackBatches.flatMap((batch) => batch.papers))).slice(0, maxPapers);
   }
@@ -117,7 +113,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     papers,
     report,
     diagnostics: {
-      sources: ["semantic_scholar", "openalex"],
+      sources: ["openalex", "crossref", "semantic_scholar"],
       llm,
       returned: papers.length,
       sourceDetails: sourceDiagnostics,
@@ -214,6 +210,33 @@ function fallbackSearchQueries(original: string, plan: SearchPlan, usedQueries: 
   return [...new Set(candidates.map((item) => item.trim()).filter(Boolean))]
     .filter((item) => !used.has(item.toLowerCase()))
     .slice(0, 4);
+}
+
+async function searchScholarlySources(queries: string[], limit: number, env: Env): Promise<SearchBatch[]> {
+  const batches: SearchBatch[] = [];
+  for (const query of queries) {
+    batches.push(await searchOpenAlex(query, limit));
+    await sleep(350);
+  }
+  if (!batches.some((batch) => batch.papers.length)) {
+    for (const query of queries.slice(0, 2)) {
+      batches.push(await searchCrossref(query, limit));
+      await sleep(350);
+    }
+  }
+  for (const query of queries.slice(0, 1)) {
+    batches.push(await searchSemanticScholar(query, limit, env.SEMANTIC_SCHOLAR_API_KEY));
+  }
+  return batches;
+}
+
+async function searchFallbackSources(queries: string[], limit: number): Promise<SearchBatch[]> {
+  const batches: SearchBatch[] = [];
+  for (const query of queries) {
+    batches.push(await searchCrossref(query, limit));
+    await sleep(350);
+  }
+  return batches;
 }
 
 async function buildReport(
@@ -430,16 +453,21 @@ function renderHtmlReport(
 </html>`;
 }
 
-async function searchSemanticScholar(query: string, limit: number): Promise<SearchBatch> {
+async function searchSemanticScholar(query: string, limit: number, apiKey?: string): Promise<SearchBatch> {
   const params = new URLSearchParams({
     query,
     limit: String(limit),
     fields: "title,authors,year,abstract,venue,citationCount,externalIds,url",
   });
   const diagnostic: SourceDiagnostic = { source: "semantic_scholar", query, status: "ok", returned: 0 };
+  if (!normalizeApiKey(apiKey)) {
+    diagnostic.status = "skipped";
+    diagnostic.message = "Semantic Scholar API key is not configured.";
+    return { papers: [], diagnostic };
+  }
   try {
     const response = await fetch(`https://api.semanticscholar.org/graph/v1/paper/search?${params}`, {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "x-api-key": normalizeApiKey(apiKey) || "" },
     });
     if (!response.ok) {
       diagnostic.status = "http_error";
@@ -474,10 +502,14 @@ async function searchSemanticScholar(query: string, limit: number): Promise<Sear
 }
 
 async function searchOpenAlex(query: string, limit: number): Promise<SearchBatch> {
-  const params = new URLSearchParams({ search: query, "per-page": String(limit) });
+  const params = new URLSearchParams({
+    search: query,
+    "per-page": String(limit),
+    mailto: "haobin_chen@mail.dhu.edu.cn",
+  });
   const diagnostic: SourceDiagnostic = { source: "openalex", query, status: "ok", returned: 0 };
   try {
-    const response = await fetch(`https://api.openalex.org/works?${params}`, {
+    const response = await fetchWithRetry(`https://api.openalex.org/works?${params}`, {
       headers: {
         Accept: "application/json",
         "User-Agent": "PaperPilot/1.0 (https://github.com/CHB-learner/PaperPilot; mailto:haobin_chen@mail.dhu.edu.cn)",
@@ -515,6 +547,70 @@ async function searchOpenAlex(query: string, limit: number): Promise<SearchBatch
     diagnostic.message = error instanceof Error ? error.message.slice(0, 160) : "Unknown request error";
     return { papers: [], diagnostic };
   }
+}
+
+async function searchCrossref(query: string, limit: number): Promise<SearchBatch> {
+  const params = new URLSearchParams({
+    query,
+    rows: String(limit),
+    mailto: "haobin_chen@mail.dhu.edu.cn",
+  });
+  const diagnostic: SourceDiagnostic = { source: "crossref", query, status: "ok", returned: 0 };
+  try {
+    const response = await fetchWithRetry(`https://api.crossref.org/works?${params}`, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "PaperPilot/1.0 (https://github.com/CHB-learner/PaperPilot; mailto:haobin_chen@mail.dhu.edu.cn)",
+      },
+    });
+    if (!response.ok) {
+      diagnostic.status = "http_error";
+      diagnostic.httpStatus = response.status;
+      return { papers: [], diagnostic };
+    }
+    const data: any = await response.json();
+    const items = data?.message?.items;
+    if (!Array.isArray(items)) {
+      diagnostic.status = "invalid_response";
+      return { papers: [], diagnostic };
+    }
+    const papers = items.map((item: any) => {
+      const dateParts = item.published?.["date-parts"] || item["published-print"]?.["date-parts"] || item["published-online"]?.["date-parts"];
+      return {
+        title: text(Array.isArray(item.title) ? item.title[0] : item.title),
+        authors: Array.isArray(item.author)
+          ? item.author.map((author: any) => [text(author.given), text(author.family)].filter(Boolean).join(" ")).filter(Boolean)
+          : [],
+        year: Array.isArray(dateParts?.[0]) ? numberOrNull(dateParts[0][0]) : null,
+        venue: textOrNull(Array.isArray(item["container-title"]) ? item["container-title"][0] : item["container-title"]),
+        abstract: textOrNull(item.abstract),
+        url: textOrNull(item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : "")),
+        doi: normalizeDoi(item.DOI),
+        citationCount: numberOrNull(item["is-referenced-by-count"]),
+        source: "crossref",
+      };
+    }).filter((paper: Paper) => paper.title);
+    diagnostic.returned = papers.length;
+    return { papers, diagnostic };
+  } catch (error) {
+    diagnostic.status = "request_error";
+    diagnostic.message = error instanceof Error ? error.message.slice(0, 160) : "Unknown request error";
+    return { papers: [], diagnostic };
+  }
+}
+
+async function fetchWithRetry(input: string, init: RequestInit): Promise<Response> {
+  let response = await fetch(input, init);
+  if (response.status !== 429) return response;
+  await sleep(900);
+  response = await fetch(input, init);
+  if (response.status !== 429) return response;
+  await sleep(1800);
+  return fetch(input, init);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function dedupePapers(papers: Paper[]): Paper[] {
