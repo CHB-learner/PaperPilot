@@ -1,4 +1,5 @@
 import { onRequestPost } from "../functions/api/literature-search";
+import demoHtml from "../docs/demo.html";
 
 type Env = {
   ASSETS: Fetcher;
@@ -7,6 +8,14 @@ type Env = {
   LLM_MODEL?: string;
 };
 
+function html(content: string): Response {
+  return new Response(content, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -14,12 +23,6 @@ function json(data: unknown, status = 200): Response {
       "Content-Type": "application/json; charset=utf-8",
     },
   });
-}
-
-function assetRequest(request: Request, pathname: string): Request {
-  const url = new URL(request.url);
-  url.pathname = pathname;
-  return new Request(url, request);
 }
 
 export default {
@@ -34,7 +37,7 @@ export default {
     }
 
     if (url.pathname === "/" || url.pathname === "/demo") {
-      return env.ASSETS.fetch(assetRequest(request, "/demo.html"));
+      return html(demoHtml);
     }
 
     return env.ASSETS.fetch(request);

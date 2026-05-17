@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["**/*.ts", "../functions/api/**/*.ts"]
+  "include": ["**/*.ts", "**/*.d.ts", "../functions/api/**/*.ts"]
 }
