@@ -1,10 +1,13 @@
 {
   "scripts": {
-    "build": "echo \"Static site is published from docs/\""
+    "build": "echo \"Static site is published from docs/\"",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "devDependencies": {
     "@netlify/functions": "^5.2.1",
     "@types/node": "^25.8.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.92.0"
   }
 }
