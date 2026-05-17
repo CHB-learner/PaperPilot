@@ -37,6 +37,20 @@ type ReportPayload = {
   filenameBase: string;
 };
 
+type SourceDiagnostic = {
+  source: string;
+  query: string;
+  status: "ok" | "http_error" | "invalid_response" | "request_error";
+  returned: number;
+  httpStatus?: number;
+  message?: string;
+};
+
+type SearchBatch = {
+  papers: Paper[];
+  diagnostic: SourceDiagnostic;
+};
+
 const DEFAULT_MODEL = "deepseek-v4-flash";
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const API_KEY_PLACEHOLDERS = new Set(["", "123456", "changeme", "your-deepseek-key"]);
@@ -79,7 +93,14 @@ export default async (req: Request, _context: Context) => {
       searchOpenAlex(searchQuery, perSourceLimit),
     ]),
   );
-  const papers = rankPapers(dedupePapers(batches.flat())).slice(0, maxPapers);
+  let sourceDiagnostics = batches.map((batch) => batch.diagnostic);
+  let papers = rankPapers(dedupePapers(batches.flatMap((batch) => batch.papers))).slice(0, maxPapers);
+  if (!papers.length) {
+    const fallbackQueries = fallbackSearchQueries(query, plan, searchQueries);
+    const fallbackBatches = await Promise.all(fallbackQueries.map((searchQuery) => searchOpenAlex(searchQuery, maxPapers)));
+    sourceDiagnostics = sourceDiagnostics.concat(fallbackBatches.map((batch) => batch.diagnostic));
+    papers = rankPapers(dedupePapers(fallbackBatches.flatMap((batch) => batch.papers))).slice(0, maxPapers);
+  }
   const report = await buildReport(query, plan, papers, llm);
   if (!report) {
     return json(
@@ -100,6 +121,7 @@ export default async (req: Request, _context: Context) => {
       sources: ["semantic_scholar", "openalex"],
       llm,
       returned: papers.length,
+      sourceDetails: sourceDiagnostics,
       elapsedMs: Date.now() - startedAt,
     },
     generatedAt: new Date().toISOString(),
@@ -183,6 +205,20 @@ function parsePlan(content: string): SearchPlan | null {
 function normalizeQueries(queries: string[], original: string): string[] {
   const clean = queries.map((item) => item.trim()).filter(Boolean);
   return [...new Set(clean.length ? clean : [original])].slice(0, 4);
+}
+
+function fallbackSearchQueries(original: string, plan: SearchPlan, usedQueries: string[]): string[] {
+  const candidates = [
+    plan.research_question,
+    "retrieval augmented generation hallucination mitigation domain specific question answering",
+    "knowledge grounded long context large language models factuality question answering",
+    "LLM external knowledge bases retrieval augmented generation factual accuracy",
+    original,
+  ];
+  const used = new Set(usedQueries.map((item) => item.toLowerCase()));
+  return [...new Set(candidates.map((item) => item.trim()).filter(Boolean))]
+    .filter((item) => !used.has(item.toLowerCase()))
+    .slice(0, 4);
 }
 
 async function buildReport(
@@ -397,19 +433,28 @@ function renderHtmlReport(
 </html>`;
 }
 
-async function searchSemanticScholar(query: string, limit: number): Promise<Paper[]> {
+async function searchSemanticScholar(query: string, limit: number): Promise<SearchBatch> {
   const params = new URLSearchParams({
     query,
     limit: String(limit),
     fields: "title,authors,year,abstract,venue,citationCount,externalIds,url",
   });
+  const diagnostic: SourceDiagnostic = { source: "semantic_scholar", query, status: "ok", returned: 0 };
   try {
     const response = await fetch(`https://api.semanticscholar.org/graph/v1/paper/search?${params}`, {
       headers: { Accept: "application/json" },
     });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      diagnostic.status = "http_error";
+      diagnostic.httpStatus = response.status;
+      return { papers: [], diagnostic };
+    }
     const data: any = await response.json();
-    return Array.isArray(data?.data)
+    if (!Array.isArray(data?.data)) {
+      diagnostic.status = "invalid_response";
+      return { papers: [], diagnostic };
+    }
+    const papers = data.data
       ? data.data.map((item: any) => ({
           title: text(item.title),
           authors: Array.isArray(item.authors) ? item.authors.map((author: any) => text(author.name)).filter(Boolean) : [],
@@ -422,22 +467,38 @@ async function searchSemanticScholar(query: string, limit: number): Promise<Pape
           source: "semantic_scholar",
         })).filter((paper: Paper) => paper.title)
       : [];
-  } catch {
-    return [];
+    diagnostic.returned = papers.length;
+    return { papers, diagnostic };
+  } catch (error) {
+    diagnostic.status = "request_error";
+    diagnostic.message = error instanceof Error ? error.message.slice(0, 160) : "Unknown request error";
+    return { papers: [], diagnostic };
   }
 }
 
-async function searchOpenAlex(query: string, limit: number): Promise<Paper[]> {
+async function searchOpenAlex(query: string, limit: number): Promise<SearchBatch> {
   const params = new URLSearchParams({ search: query, "per-page": String(limit) });
+  const diagnostic: SourceDiagnostic = { source: "openalex", query, status: "ok", returned: 0 };
   try {
     const response = await fetch(`https://api.openalex.org/works?${params}`, {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "PaperPilot/1.0 (https://github.com/CHB-learner/PaperPilot; mailto:haobin_chen@mail.dhu.edu.cn)",
+      },
     });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      diagnostic.status = "http_error";
+      diagnostic.httpStatus = response.status;
+      return { papers: [], diagnostic };
+    }
     const data: any = await response.json();
-    return Array.isArray(data?.results)
+    if (!Array.isArray(data?.results)) {
+      diagnostic.status = "invalid_response";
+      return { papers: [], diagnostic };
+    }
+    const papers = data.results
       ? data.results.map((item: any) => ({
-          title: text(item.display_name),
+          title: text(item.display_name || item.title),
           authors: Array.isArray(item.authorships)
             ? item.authorships.map((auth: any) => text(auth.author?.display_name)).filter(Boolean)
             : [],
@@ -450,8 +511,12 @@ async function searchOpenAlex(query: string, limit: number): Promise<Paper[]> {
           source: "openalex",
         })).filter((paper: Paper) => paper.title)
       : [];
-  } catch {
-    return [];
+    diagnostic.returned = papers.length;
+    return { papers, diagnostic };
+  } catch (error) {
+    diagnostic.status = "request_error";
+    diagnostic.message = error instanceof Error ? error.message.slice(0, 160) : "Unknown request error";
+    return { papers: [], diagnostic };
   }
 }
 
