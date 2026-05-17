@@ -8,8 +8,10 @@
 [![Reports](https://img.shields.io/badge/Reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)](https://pypi.org/project/paperpilot/)
 [![Workflow](https://img.shields.io/badge/Workflow-evidence--grounded-0891b2)](https://github.com/CHB-learner/PaperPilot)
 [![Online Demo](https://img.shields.io/badge/Online%20Demo-Cloudflare%20Workers-f38020)](https://paperpilot.aleck-757.workers.dev/)
+[![Netlify Demo](https://img.shields.io/badge/Online%20Demo-Netlify-00ad9f)](https://voluble-marshmallow-e2bba5.netlify.app/)
 
-[English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/) | [Online demo](https://paperpilot.aleck-757.workers.dev/) | [GitHub](https://github.com/CHB-learner/PaperPilot) | [PyPI](https://pypi.org/project/paperpilot/)
+[English](README.md) | [中文](README.zh-CN.md) | [Website](https://chb-learner.github.io/PaperPilot/) | [GitHub](https://github.com/CHB-learner/PaperPilot) | [PyPI](https://pypi.org/project/paperpilot/)
+[Online demo: Cloudflare Workers](https://paperpilot.aleck-757.workers.dev/) | [Online demo: Netlify](https://voluble-marshmallow-e2bba5.netlify.app/)
 
 <p align="center">
   <img src="docs/assets/paperpilot-hero.png" alt="PaperPilot - scholarly literature review agent" width="100%">
