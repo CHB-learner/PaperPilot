@@ -7,9 +7,9 @@
 [![CLI](https://img.shields.io/badge/CLI-PaperPilot-334155)](https://github.com/CHB-learner/PaperPilot)
 [![Reports](https://img.shields.io/badge/Reports-ZH%2FEN%20MD%20HTML%20PDF-ef4444)](https://pypi.org/project/paperpilot/)
 [![Workflow](https://img.shields.io/badge/Workflow-evidence--grounded-0891b2)](https://github.com/CHB-learner/PaperPilot)
-[![在线体验](https://img.shields.io/badge/在线体验-Netlify-00ad9f)](https://voluble-marshmallow-e2bba5.netlify.app/)
+[![在线体验](https://img.shields.io/badge/在线体验-Cloudflare%20Workers-f38020)](https://paperpilot.aleck-757.workers.dev/)
 
-[English](README.md) | [中文](README.zh-CN.md) | [项目主页](https://chb-learner.github.io/PaperPilot/) | [在线体验](https://voluble-marshmallow-e2bba5.netlify.app/) | [GitHub](https://github.com/CHB-learner/PaperPilot) | [PyPI](https://pypi.org/project/paperpilot/)
+[English](README.md) | [中文](README.zh-CN.md) | [项目主页](https://chb-learner.github.io/PaperPilot/) | [在线体验](https://paperpilot.aleck-757.workers.dev/) | [GitHub](https://github.com/CHB-learner/PaperPilot) | [PyPI](https://pypi.org/project/paperpilot/)
 
 <p align="center">
   <img src="docs/assets/paperpilot-hero.png" alt="PaperPilot - scholarly literature review agent" width="100%">
@@ -18,7 +18,7 @@
 PaperPilot 是一个面向 AI、生医与 AI for Science 场景的 **CLI 科研文献检索与综述 Agent**。  
 它把自然语言研究需求，转化为可追踪、可复现的工作流，并输出中文/英文一致的三端报告（Markdown、HTML、PDF）。
 
-Netlify 在线体验提供轻量浏览器入口：服务端使用 OpenAI-compatible LLM 生成检索计划，调用公开论文源返回候选论文，并支持下载轻量 Markdown/HTML 报告。完整的语料筛选、PDF/全文处理、Evidence Ledger、中英 PDF 报告和 Obsidian Wiki 仍由本地 CLI workflow 提供。
+Cloudflare Workers 在线体验提供轻量浏览器入口：服务端使用 OpenAI-compatible LLM 生成检索计划，调用公开论文 metadata 源返回候选论文，并支持下载轻量 Markdown/HTML 报告。完整的语料筛选、PDF/全文处理、Evidence Ledger、中英 PDF 报告和 Obsidian Wiki 仍由本地 CLI workflow 提供。
 
 该项目是文件系统驱动的研究工作流，而不是聊天机器人：每次运行都会生成独立的 task 文件夹，完整保留状态、事件日志和中间产物。
 
@@ -36,7 +36,7 @@ Netlify 在线体验提供轻量浏览器入口：服务端使用 OpenAI-compati
 
 ### 交互体验
 - Rich 终端交互，支持颜色与分组菜单
-- Netlify 在线体验：生成检索计划、查询公开论文源、下载轻量 Markdown/HTML 报告
+- Cloudflare Workers 在线体验：生成检索计划、查询公开论文源、下载轻量 Markdown/HTML 报告
 - 启动页显示当前模型、来源配置与快捷命令
 - 支持 `/model`、`/sources`、`/doctor`
 - 支持命令模式与交互模式统一工作流
@@ -159,17 +159,17 @@ PaperPilot sources test core
 
 交互内可用 `/sources` 与 `/doctor` 快速查看与复查来源配置。
 
-### Netlify 在线体验配置
+### Cloudflare Workers 在线体验配置
 
-线上体验通过 Netlify Function `/api/literature-search` 提供服务。需要在 Netlify 项目中配置：
+线上体验运行在 `https://paperpilot.aleck-757.workers.dev/`，由 Cloudflare Worker 提供 `/api/literature-search`。`wrangler.jsonc` 内置安全默认值：
 
 ```text
 LLM_BASE_URL=https://api.deepseek.com
 LLM_MODEL=deepseek-v4-flash
-LLM_API_KEY=<服务端 API key>
+LLM_API_KEY=123456
 ```
 
-`LLM_API_KEY` 只应保存在 Netlify 服务端环境变量中，不要写入前端代码。
+请在 Cloudflare `Variables and Secrets` 中用真实服务端 key 覆盖占位的 `LLM_API_KEY`。前端只调用 Worker API，不会在浏览器代码中嵌入密钥。在线体验默认使用 OpenAlex 和 Crossref 公开 metadata 源；Semantic Scholar 仅在配置 `SEMANTIC_SCHOLAR_API_KEY` 后启用，以避免公开 API 限流。
 
 可选来源 API 获取入口：
 

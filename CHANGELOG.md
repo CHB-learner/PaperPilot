@@ -1,14 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Promoted the Cloudflare Workers online demo as the primary hosted browser experience.
+- Updated public documentation and website links to use `https://paperpilot.aleck-757.workers.dev/`.
+- Documented Workers + Assets deployment through `wrangler.jsonc` and `/api/literature-search`.
+
+### Fixed
+- Added OpenAlex/Crossref fallback search and source diagnostics for the online demo.
+- Treat `LLM_API_KEY=123456` as an unconfigured placeholder instead of calling the LLM provider with a dummy key.
+
 ## [1.6.0] - 2026-05-16
 
 ### Added
-- Added the Netlify online experience for LLM-planned public literature search.
+- Added the hosted online experience for LLM-planned public literature search.
 - Added lightweight Markdown and HTML report downloads in the browser demo.
-- Documented the hosted Netlify demo and DeepSeek OpenAI-compatible environment configuration.
+- Documented the hosted online demo and DeepSeek OpenAI-compatible environment configuration.
 
 ### Changed
-- Switched the Netlify online demo defaults to DeepSeek `deepseek-v4-flash`.
+- Switched the online demo defaults to DeepSeek `deepseek-v4-flash`.
 - Updated online search result count options to 10, 30, and 50 papers.
 
 ## [1.5.3] - 2026-05-15

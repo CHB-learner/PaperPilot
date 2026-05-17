@@ -388,7 +388,7 @@
       <div class="hero-inner">
         <span class="eyebrow">Online demo</span>
         <h1>输入调研需求，生成检索计划和候选论文。</h1>
-        <p class="lead">这个在线体验使用服务端 LLM 生成英文检索式、研究问题和纳入标准，再查询公开论文源并生成可下载的轻量 Markdown/HTML 报告。完整 PDF、Evidence Ledger、Obsidian Wiki 和完整 PaperPilot CLI workflow 需要在本地运行。</p>
+        <p class="lead">这个在线体验运行在 Cloudflare Workers 上，使用服务端 LLM 生成英文检索式、研究问题和纳入标准，再查询公开论文 metadata API 并生成可下载的轻量 Markdown/HTML 报告。完整 PDF、Evidence Ledger、Obsidian Wiki 和完整 PaperPilot CLI workflow 需要在本地运行。</p>
       </div>
     </header>
 
@@ -414,7 +414,7 @@
             </form>
             <aside class="notice-panel">
               <h2>轻量在线体验</h2>
-              <p>这里不会在 Netlify 上运行完整 Python CLI，也不会抽取 PDF 全文。结果基于公开 API metadata/abstract，适合快速形成检索计划和候选列表。</p>
+              <p>这里不会运行完整本地 Python CLI workflow，也不会抽取 PDF 全文。结果基于公开 API metadata/abstract，适合快速形成检索计划和候选列表。</p>
             </aside>
           </div>
           <div class="results-panel" id="paper-search-results">
@@ -484,7 +484,7 @@
         </div>
         ${renderDownloadActions(report)}
         <div class="paper-list">
-          ${papers.map(renderPaper).join("") || '<article class="paper"><h3>没有找到候选论文</h3><p>可以换一个更具体的研究需求。</p></article>'}
+          ${papers.map(renderPaper).join("") || renderEmptyPapers(data)}
         </div>
       `;
       const markdownButton = document.getElementById("download-report-md");
@@ -505,6 +505,15 @@
           <button class="button secondary" id="download-report-html" type="button">下载 HTML</button>
         </div>
       `;
+    }
+
+    function renderEmptyPapers(data) {
+      const details = Array.isArray(data.diagnostics?.sourceDetails) ? data.diagnostics.sourceDetails : [];
+      const rateLimited = details.some((item) => item.httpStatus === 429);
+      const message = rateLimited
+        ? "公开论文源暂时限流。可以稍后重试，或换一个更具体的研究需求。"
+        : "可以换一个更具体的研究需求。";
+      return `<article class="paper"><h3>没有找到候选论文</h3><p>${message}</p></article>`;
     }
 
     function renderPaper(paper) {
