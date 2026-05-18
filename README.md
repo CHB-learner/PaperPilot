@@ -14,6 +14,12 @@
 [Online demo: Cloudflare Workers](https://paperpilot.aleck-757.workers.dev/) | [Online demo: Netlify](https://voluble-marshmallow-e2bba5.netlify.app/)
 
 <p align="center">
+  <a href="https://www.star-history.com/#chb-learner/paperpilot&Date">
+    <img src="https://api.star-history.com/svg?repos=chb-learner/paperpilot&type=Date" alt="PaperPilot GitHub star history" width="100%">
+  </a>
+</p>
+
+<p align="center">
   <img src="docs/assets/paperpilot-hero.png" alt="PaperPilot - scholarly literature review agent" width="100%">
 </p>
 
