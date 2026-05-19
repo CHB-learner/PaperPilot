@@ -301,6 +301,15 @@ runs/<task-id>/wiki/obsidian/
 - [`docs/scholarflow-vault-example.md`](docs/scholarflow-vault-example.md)
 - [`examples/scholarflow.example.json`](examples/scholarflow.example.json)
 
+`summary.md` 自动索引表示例：
+
+| 发布时间 | 论文 | 笔记 | 代码 | 来源 | 备注 |
+|---|---|---|---|---|---|
+| 2026.05.20 | [CitationGraph-RAG](https://example.org/papers/citationgraph-rag) | 待精读 | [GitHub](https://github.com/example/citationgraph-rag) | [arXiv](https://arxiv.org/) | 公开演示行 |
+| 2026.05.18 | [BenchAgent-Eval](https://example.org/papers/benchagent-eval) | 草稿笔记 |  | [OpenReview](https://openreview.net/) | 脱敏示例 |
+
+说明：这个表格必须写成普通 Markdown，不要放进代码块，并且表格前后保留空行，这样 GitHub README 才会渲染成表格。
+
 ## 🧩 代码仓库筛选
 
 ```bash

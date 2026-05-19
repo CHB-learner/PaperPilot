@@ -295,6 +295,15 @@ For a public-safe ScholarFlow-style vault layout and config template, see:
 - [`docs/scholarflow-vault-example.md`](docs/scholarflow-vault-example.md)
 - [`examples/scholarflow.example.json`](examples/scholarflow.example.json)
 
+Example `summary.md` auto-index table:
+
+| Date | Paper | Notes | Code | Source | Remarks |
+|---|---|---|---|---|---|
+| 2026.05.20 | [CitationGraph-RAG](https://example.org/papers/citationgraph-rag) | To read | [GitHub](https://github.com/example/citationgraph-rag) | [arXiv](https://arxiv.org/) | Public demo row |
+| 2026.05.18 | [BenchAgent-Eval](https://example.org/papers/benchagent-eval) | Draft note |  | [OpenReview](https://openreview.net/) | Sanitized example |
+
+This table is written as normal Markdown, not inside a fenced code block, so GitHub can render it.
+
 ## 🧩 Code filter modes
 
 - `any`: keep all papers and annotate code availability

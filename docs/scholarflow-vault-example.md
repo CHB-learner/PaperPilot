@@ -91,3 +91,19 @@ Use placeholders or environment variables for local paths. Do not commit persona
 ```
 
 The same JSON is available as [`examples/scholarflow.example.json`](../examples/scholarflow.example.json).
+
+## Example `summary.md` Table
+
+The field-level `summary.md` page can maintain a compact auto-index table. Keep it as plain Markdown, not a fenced code block, so GitHub and Obsidian can render it as a table.
+
+| Date | Paper | Notes | Code | Source | Remarks |
+|---|---|---|---|---|---|
+| 2026.05.20 | [CitationGraph-RAG](https://example.org/papers/citationgraph-rag) | To read | [GitHub](https://github.com/example/citationgraph-rag) | [arXiv](https://arxiv.org/) | Public demo row |
+| 2026.05.18 | [BenchAgent-Eval](https://example.org/papers/benchagent-eval) | Draft note |  | [OpenReview](https://openreview.net/) | Sanitized example |
+
+Chinese-column variant:
+
+| 发布时间 | 论文 | 笔记 | 代码 | 来源 | 备注 |
+|---|---|---|---|---|---|
+| 2026.05.20 | [CitationGraph-RAG](https://example.org/papers/citationgraph-rag) | 待精读 | [GitHub](https://github.com/example/citationgraph-rag) | [arXiv](https://arxiv.org/) | 公开演示行 |
+| 2026.05.18 | [BenchAgent-Eval](https://example.org/papers/benchagent-eval) | 草稿笔记 |  | [OpenReview](https://openreview.net/) | 脱敏示例 |
