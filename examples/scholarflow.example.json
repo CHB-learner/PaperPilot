@@ -1,0 +1,30 @@
+{
+  "vault": "${SCHOLARFLOW_VAULT_PATH}",
+  "folders": {
+    "daily": "DailyPapers",
+    "research": "Research_Fields",
+    "uncategorized": "Uncategorized"
+  },
+  "daily": {
+    "keywords": [
+      "graph retrieval",
+      "scientific agents"
+    ]
+  },
+  "fields": {
+    "GraphRAG": [
+      "graph retrieval augmented generation",
+      "citation graph reasoning",
+      "knowledge graph RAG"
+    ],
+    "ScientificAgents": [
+      "scientific discovery agent",
+      "LLM research assistant",
+      "tool-using agent evaluation"
+    ]
+  },
+  "zotero": {
+    "db": "${ZOTERO_DB_PATH}",
+    "storage": "${ZOTERO_STORAGE_PATH}"
+  }
+}

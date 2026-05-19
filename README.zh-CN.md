@@ -296,6 +296,11 @@ runs/<task-id>/wiki/obsidian/
 
 如需跳过 Wiki 生成，可使用 `--no-obsidian-wiki`。
 
+如果需要公开文档里的 ScholarFlow 风格 vault 结构和配置模板，请使用已脱敏示例：
+
+- [`docs/scholarflow-vault-example.md`](docs/scholarflow-vault-example.md)
+- [`examples/scholarflow.example.json`](examples/scholarflow.example.json)
+
 ## 🧩 代码仓库筛选
 
 ```bash

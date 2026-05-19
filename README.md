@@ -290,6 +290,11 @@ Each successful run generates `runs/<task-id>/wiki/obsidian/` by default. Open t
 
 Use `--no-obsidian-wiki` to skip Wiki generation.
 
+For a public-safe ScholarFlow-style vault layout and config template, see:
+
+- [`docs/scholarflow-vault-example.md`](docs/scholarflow-vault-example.md)
+- [`examples/scholarflow.example.json`](examples/scholarflow.example.json)
+
 ## 🧩 Code filter modes
 
 - `any`: keep all papers and annotate code availability
